@@ -28,7 +28,7 @@ export function kiMetadata({ pfad, titel, beschreibung, keywords, noindex }: Met
         ...(keywords && { keywords }),
         alternates: {
             canonical: url,
-            languages: { 'de-CH': url },
+            languages: { 'de-CH': url, 'x-default': url }, // [01.11.2026] AUFTRAG-116: hreflang x-default
         },
         openGraph: {
             type: 'website',

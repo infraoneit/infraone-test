@@ -22,7 +22,9 @@ export default function FaqSeite() {
         <>
             <JsonLd daten={[...kiSeitenSchemas(PFAD, 'Häufige Fragen zum KI-Telefonassistenten', BESCHREIBUNG, krumen), generateFAQSchema(faqFuerSchema(ALLE_FAQ))]} />
 
+            {/* [01.11.2026] AUFTRAG-116: pfad für «Aktualisiert am …» in der Brotkrumen-Zeile */}
             <SeitenKopf
+                pfad={PFAD}
                 krumen={krumen}
                 eyebrow="Häufige Fragen"
                 titel="Häufige Fragen zum KI-Telefonassistenten"

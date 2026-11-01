@@ -57,7 +57,8 @@ const services: Array<{
         title: 'Cloud Telefonie',
         subtitle: 'peoplefone • 3CX • Yeastar',
         description: 'Moderne VoIP-Telefonanlagen für flexibles Arbeiten – im Büro, unterwegs oder im Homeoffice.',
-        href: '/telefonie',
+        // [01.11.2026] AUFTRAG-116: direkt auf /cloud-telefonie statt auf die Weiterleitung /telefonie
+        href: '/cloud-telefonie',
     },
     {
         icon: Video,

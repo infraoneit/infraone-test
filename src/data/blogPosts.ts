@@ -43,6 +43,7 @@ export function generateBlogMetadata(post: BlogPost): Metadata {
             canonical: `https://infraone.ch/blog/${post.slug}`,
             languages: {
                 'de-CH': `https://infraone.ch/blog/${post.slug}`,
+                'x-default': `https://infraone.ch/blog/${post.slug}`, // [01.11.2026] AUFTRAG-116: hreflang x-default
             },
         },
     };

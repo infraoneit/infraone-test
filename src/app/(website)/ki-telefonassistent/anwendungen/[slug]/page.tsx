@@ -66,7 +66,8 @@ export default async function AnwendungSeite({ params }: { params: Promise<{ slu
         <>
             <JsonLd daten={kiSeitenSchemas(pfad, a.h1, a.metaBeschreibung, krumen)} />
 
-            <SeitenKopf krumen={krumen} eyebrow={`Anwendung: ${a.name}`} hinweis={a.inEntwicklung ? <InEntwicklungBadge /> : undefined} titel={a.h1} lead={<p>{a.lead}</p>} />
+            {/* [01.11.2026] AUFTRAG-116: pfad für «Aktualisiert am …» in der Brotkrumen-Zeile */}
+            <SeitenKopf pfad={pfad} krumen={krumen} eyebrow={`Anwendung: ${a.name}`} hinweis={a.inEntwicklung ? <InEntwicklungBadge /> : undefined} titel={a.h1} lead={<p>{a.lead}</p>} />
 
             {/* Problem */}
             <Abschnitt titel={a.problem.titel} hintergrund="surface">

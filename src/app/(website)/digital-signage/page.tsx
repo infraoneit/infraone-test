@@ -19,6 +19,7 @@ export const metadata: Metadata = {
         canonical: 'https://infraone.ch/digital-signage',
         languages: {
             'de-CH': 'https://infraone.ch/digital-signage',
+            'x-default': 'https://infraone.ch/digital-signage', // [01.11.2026] AUFTRAG-116: hreflang x-default
         },
     },
 };

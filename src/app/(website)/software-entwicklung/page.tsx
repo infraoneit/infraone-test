@@ -19,6 +19,7 @@ export const metadata: Metadata = {
         canonical: 'https://infraone.ch/software-entwicklung',
         languages: {
             'de-CH': 'https://infraone.ch/software-entwicklung',
+            'x-default': 'https://infraone.ch/software-entwicklung', // [01.11.2026] AUFTRAG-116: hreflang x-default
         },
     },
 };

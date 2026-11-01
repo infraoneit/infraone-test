@@ -19,6 +19,7 @@ export const metadata: Metadata = {
         canonical: 'https://infraone.ch/webdesign',
         languages: {
             'de-CH': 'https://infraone.ch/webdesign',
+            'x-default': 'https://infraone.ch/webdesign', // [01.11.2026] AUFTRAG-116: hreflang x-default
         },
     },
 };

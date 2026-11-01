@@ -1,7 +1,7 @@
 # InfraOne IT Solutions GmbH
 
 > Schweizer IT-Dienstleister mit Hauptsitz in Winterthur und drei weiteren Standorten.
-> Spezialgebiete: Cloud-Telefonie, Webdesign, Informatik-Support, Digital Signage.
+> Spezialgebiete: KI-Telefonassistent fuer Schweizer KMU (versteht und spricht Schweizerdeutsch), Cloud-Telefonie, IT-Support, Webdesign, Digital Signage.
 > Hauptregionen: Winterthur, Zuerich, Thurgau, Schaffhausen.
 > Schweizweite Betreuung fuer KMU und Privatpersonen.
 
@@ -12,7 +12,7 @@ Kontakt: info@infraone.ch, 052 222 18 18, Notfall 076 587 50 55
 
 ## 1. Unternehmen
 
-InfraOne IT Solutions GmbH ist ein 2015 gegruendeter, inhabergefuehrter IT-Dienstleister mit Sitz in Winterthur. Das Unternehmen beschaeftigt 5 Mitarbeitende und betreut rund 100 KMU-Kunden in der IT-Betreuung in der Deutschschweiz. Inhabergefuehrt heisst hier konkret: Geschaeftsfuehrung und IT-Verantwortung liegen in einer Hand, Entscheidungen fallen kurz, Kunden haben einen direkten Ansprechpartner.
+InfraOne IT Solutions GmbH ist ein 2015 gegruendeter, inhabergefuehrter IT-Dienstleister mit Sitz in Winterthur. Das Unternehmen betreut rund 100 KMU-Kunden in der IT-Betreuung in der Deutschschweiz. Inhabergefuehrt heisst hier konkret: Geschaeftsfuehrung und IT-Verantwortung liegen in einer Hand, Entscheidungen fallen kurz, Kunden haben einen direkten Ansprechpartner.
 
 ### Standorte
 

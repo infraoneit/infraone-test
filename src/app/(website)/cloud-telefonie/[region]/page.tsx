@@ -28,6 +28,7 @@ export async function generateMetadata({ params }: { params: Promise<{ region: s
             canonical: data.canonicalUrl || `${BASE_URL}/cloud-telefonie/${region}`,
             languages: {
                 'de-CH': data.canonicalUrl || `${BASE_URL}/cloud-telefonie/${region}`,
+                'x-default': data.canonicalUrl || `${BASE_URL}/cloud-telefonie/${region}`, // [01.11.2026] AUFTRAG-116: hreflang x-default
             },
         },
     };

@@ -18,6 +18,7 @@ export const metadata: Metadata = {
         canonical: 'https://infraone.ch/videoueberwachung',
         languages: {
             'de-CH': 'https://infraone.ch/videoueberwachung',
+            'x-default': 'https://infraone.ch/videoueberwachung', // [01.11.2026] AUFTRAG-116: hreflang x-default
         },
     },
 };

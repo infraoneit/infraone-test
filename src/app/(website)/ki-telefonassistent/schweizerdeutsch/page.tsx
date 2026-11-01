@@ -78,7 +78,9 @@ export default function SchweizerdeutschSeite() {
         <>
             <JsonLd daten={kiSeitenSchemas(PFAD, 'KI-Telefonassistent auf Schweizerdeutsch', BESCHREIBUNG, krumen)} />
 
+            {/* [01.11.2026] AUFTRAG-116: pfad für «Aktualisiert am …» in der Brotkrumen-Zeile */}
             <SeitenKopf
+                pfad={PFAD}
                 krumen={krumen}
                 eyebrow="Schweizerdeutsch"
                 titel="Ein Telefonassistent, der Mundart versteht und spricht"

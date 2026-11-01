@@ -17,6 +17,7 @@ export const metadata: Metadata = {
         canonical: 'https://infraone.ch/microsoft-365',
         languages: {
             'de-CH': 'https://infraone.ch/microsoft-365',
+            'x-default': 'https://infraone.ch/microsoft-365', // [01.11.2026] AUFTRAG-116: hreflang x-default
         },
     },
 };

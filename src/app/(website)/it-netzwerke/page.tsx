@@ -18,6 +18,7 @@ export const metadata: Metadata = {
         canonical: 'https://infraone.ch/it-netzwerke',
         languages: {
             'de-CH': 'https://infraone.ch/it-netzwerke',
+            'x-default': 'https://infraone.ch/it-netzwerke', // [01.11.2026] AUFTRAG-116: hreflang x-default
         },
     },
 };

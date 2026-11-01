@@ -17,6 +17,7 @@ export const metadata: Metadata = {
         canonical: 'https://infraone.ch/it-sicherheit',
         languages: {
             'de-CH': 'https://infraone.ch/it-sicherheit',
+            'x-default': 'https://infraone.ch/it-sicherheit', // [01.11.2026] AUFTRAG-116: hreflang x-default
         },
     },
 };

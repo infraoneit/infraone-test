@@ -34,7 +34,8 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   title: {
-    default: "InfraOne IT Solutions | IT-Support, Webdesign & Telefonie in Winterthur",
+    // [01.11.2026] AUFTRAG-116: Startseiten-Titel auf 58 Zeichen (vorher 71); openGraph/twitter unverändert
+    default: "IT-Support, Webdesign & Telefonie in Winterthur | InfraOne",
     template: "%s | InfraOne"
   },
   description: "IT-Support, Cloud-Telefonie, Webdesign und KI-Lösungen für KMU – mit offenen Preisen und Online-Kostenrechner. Winterthur, Schaffhausen, Thurgau und Zürich.",
@@ -96,6 +97,7 @@ export const metadata: Metadata = {
     canonical: 'https://infraone.ch',
     languages: {
       'de-CH': 'https://infraone.ch',
+      'x-default': 'https://infraone.ch', // [01.11.2026] AUFTRAG-116: hreflang x-default
     },
   },
   icons: {

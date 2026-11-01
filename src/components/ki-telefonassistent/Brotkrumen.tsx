@@ -18,7 +18,8 @@ export function kiKrumen(...weitere: Krume[]): Krume[] {
 export function kiSeitenSchemas(pfad: string, name: string, beschreibung: string, krumen: Krume[]) {
     const url = `${BASE_URL}${pfad}`;
     return [
-        generateKiSeitenSchema(url, name, beschreibung),
+        // [01.11.2026] AUFTRAG-116: pfad durchreichen (datePublished/dateModified aus Git, speakable am Hub)
+        generateKiSeitenSchema(url, name, beschreibung, pfad),
         generateKiBreadcrumbSchema(
             url,
             krumen.map((k) => ({ name: k.name, url: k.pfad === '/' ? BASE_URL : `${BASE_URL}${k.pfad}` })),

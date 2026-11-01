@@ -100,8 +100,10 @@ export default async function KINewsSection() {
     const news = await ladeNews();
     if (news.length === 0) return null;
 
+    // [01.11.2026] AUFTRAG-116 (Nachtrag N2): data-ki-news als stabiler Haken für Prüfskripte — die Sektion zeigt
+    // fremde Schlagzeilen (the-decoder.de); die A-114-Prüfung der Anbieter-Namen nimmt sie aus.
     return (
-        <section className="py-16 lg:py-24 bg-background border-t border-border">
+        <section data-ki-news="" className="py-16 lg:py-24 bg-background border-t border-border">
             <div className="container mx-auto px-4">
                 <div className="text-center mb-12">
                     <h2 className="text-3xl md:text-4xl font-bold text-text-primary mb-4">

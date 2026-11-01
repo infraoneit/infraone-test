@@ -17,7 +17,8 @@
  *     Dropdowns ≤ 640 px, im Fenster, kein Eintrag abgeschnitten (1024 und 1280 px).
  * P3  /datenschutz: Titel, Beschreibung, alle Texte sichtbar, Anker, Tabelle (mobil waagrecht scrollbar,
  *     Seite ohne waagrechtes Scrollen); auf allen übrigen Sitemap-Seiten und in llms*.txt kein
- *     Gemini/OpenAI/GPT/ChatGPT; Satz mit Link auf /datenschutz#dienstleister; beim Laden von / keine
+ *     Gemini/OpenAI/GPT/ChatGPT (ohne die KI-News-Sektion [data-ki-news] mit fremden Schlagzeilen — [01.11.2026]
+ *     AUFTRAG-116, Nachtrag N2); Satz mit Link auf /datenschutz#dienstleister; beim Laden von / keine
  *     Anfrage an fonts.googleapis.com / fonts.gstatic.com.
  * P4  /preise: SMS-Bestätigung ohne Badge in Starter/Business/Enterprise, Kalender mit Badge; im ganzen
  *     KI-Bereich keine Badge «In Entwicklung» an einem Eintrag, der die SMS nennt.
@@ -455,25 +456,34 @@ try {
         const { ctx, page } = await neueSeite({ width: 1280, height: 900 });
         const funde = [];
         let geprueft = 0;
+        const kiNewsEntfernt = [];
         for (const pfad of pfade) {
             if (pfad === '/datenschutz') continue;
             await page.goto(`${BASE}${pfad}`, { waitUntil: 'domcontentloaded', timeout: 60000 });
+            // [01.11.2026] AUFTRAG-116 (Nachtrag N2): Die A-114-Regel meint die KI-Anbieter, die WIR einsetzen — nicht fremde
+            // Schlagzeilen. Die KI-News-Sektion (KINewsSection, RSS von the-decoder.de, /software-entwicklung) zeigt
+            // Fremdinhalte, die sich täglich ändern (z. B. «ChatGPT …»). Sie wird darum vor der Textprüfung aus dem DOM
+            // entfernt (Haken: data-ki-news). Meta-Angaben und JSON-LD bleiben vollständig geprüft.
             const t = await page.evaluate(() => {
+                const kiNews = [...document.querySelectorAll('[data-ki-news]')];
+                kiNews.forEach((n) => n.remove());
                 const meta = [...document.querySelectorAll('meta[content]')].map((m) => m.content).join(' ');
                 const ld = [...document.querySelectorAll('script[type="application/ld+json"]')].map((s) => s.textContent).join(' ');
-                return `${document.title} ${meta} ${document.body.innerText} ${ld}`;
+                return { text: `${document.title} ${meta} ${document.body.innerText} ${ld}`, kiNews: kiNews.length };
             });
+            if (t.kiNews) kiNewsEntfernt.push(`${pfad} (${t.kiNews})`);
             geprueft++;
-            const m = t.match(ANBIETER_RE);
+            const m = t.text.match(ANBIETER_RE);
             if (m) funde.push(`${pfad}: «${m[0]}»`);
         }
         await ctx.close();
+        console.log(`INFO  P3: KI-News-Sektion (Fremdinhalt, data-ki-news) vor der Prüfung entfernt auf: ${kiNewsEntfernt.join(', ') || 'keiner Seite (Feed leer)'}`);
         check(`P3: ${geprueft} Sitemap-Seiten ausser /datenschutz — kein Gemini/OpenAI/GPT-/ChatGPT in Text, Meta oder JSON-LD`, geprueft >= 70 && funde.length === 0, funde.join(' | '));
         for (const datei of ['/llms.txt', '/llms-full.txt']) {
             const r = await hole(`${BASE}${datei}`);
             check(`P3: ${datei} ohne Anbieter-Namen`, r.status === 200 && !ANBIETER_RE.test(r.text), r.text.match(ANBIETER_RE)?.[0] ?? '');
         }
-        protokoll.anbieterSuche = { seiten: geprueft, funde };
+        protokoll.anbieterSuche = { seiten: geprueft, funde, kiNewsEntfernt };
 
         // Schriften: beim Laden von / keine Anfrage an Google Fonts
         {

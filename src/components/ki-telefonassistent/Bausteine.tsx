@@ -10,6 +10,7 @@ import { AnimatedSection } from '@/components/ui/AnimatedSection';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
 import { Brotkrumen, type Krume } from './Brotkrumen';
+import { Aktualisiert } from './Aktualisiert';
 import { InEntwicklungBadge, MitHinweis } from './InEntwicklung';
 import { MitKiAnbieterLink } from './KiAnbieter';
 import { KI_BASIS } from './seiten';
@@ -20,6 +21,7 @@ import { ANFRAGE_HREF, ANFRAGE_TEXTE } from '@/lib/ki-anfrage';
 /* ------------------------------------------------------------------ */
 
 export function SeitenKopf({
+    pfad,
     krumen,
     eyebrow,
     titel,
@@ -29,6 +31,8 @@ export function SeitenKopf({
     unterLead,
     hinweis,
 }: {
+    /** [01.11.2026] AUFTRAG-116: Pfad der Seite ab Domain — für «Aktualisiert am …» rechts in der Brotkrumen-Zeile */
+    pfad: string;
     krumen: Krume[];
     eyebrow: string;
     /** AUFTRAG-113: z. B. Badge «In Entwicklung, kommt bald» neben der Eyebrow (Titelbereich) */
@@ -47,7 +51,11 @@ export function SeitenKopf({
                 <div className="absolute -top-56 right-[-15%] w-[48rem] h-[48rem] rounded-full bg-[radial-gradient(closest-side,color-mix(in_oklab,var(--primary)_12%,transparent),transparent)]" />
             </div>
             <div className="container mx-auto px-4 relative">
-                <Brotkrumen krumen={krumen} className="mb-8 lg:mb-10" />
+                {/* [01.11.2026] AUFTRAG-116: Brotkrumen (Markup unverändert) und rechts «Aktualisiert am …» in einer Zeile */}
+                <div className="mb-8 lg:mb-10 flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
+                    <Brotkrumen krumen={krumen} />
+                    <Aktualisiert pfad={pfad} />
+                </div>
                 <div className={cn('grid gap-10 lg:gap-14', aside && 'lg:grid-cols-12 lg:items-center')}>
                     <div className={cn(aside && 'lg:col-span-7')}>
                         <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
