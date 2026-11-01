@@ -177,7 +177,11 @@ const jetzt = Date.now();
 const reihenfolge = Object.entries(lm.seiten).filter(([, d]) => !(Date.parse(d.erstellt) <= Date.parse(d.geaendert) && Date.parse(d.geaendert) <= jetzt)).map(([s, d]) => `${s} ${d.erstellt} > ${d.geaendert}`);
 pruefe('P2b: erstellt ≤ geaendert ≤ jetzt für jede Seite', reihenfolge.length === 0, reihenfolge.join(', '));
 const verschiedene = new Set(Object.values(lm.seiten).map((d) => d.geaendert)).size;
-pruefe(`P2b: echte Daten statt Build-Zeit — ${verschiedene} verschiedene Änderungsdaten über ${schluessel.length} Seiten`, verschiedene >= 10, verschiedene);
+// [01.11.2026] AUFTRAG-116 (Nachtrag): Nach dem Commit von A-116 tragen alle Seiten, deren Quellen A-116 geändert hat
+// (z. B. x-default in den [region]-Vorlagen), zu Recht dasselbe Commit-Datum — darum nur «mehrere Daten, keine Build-Zeit»;
+// die Richtigkeit je Seite belegen die Stichproben gegen git log.
+const haeufigstes = Math.max(...Object.values(Object.values(lm.seiten).reduce((m, d) => ({ ...m, [d.geaendert]: (m[d.geaendert] ?? 0) + 1 }), {})));
+pruefe(`P2b: echte Daten statt Build-Zeit — ${verschiedene} verschiedene Änderungsdaten über ${schluessel.length} Seiten (häufigstes: ${haeufigstes} Seiten)`, verschiedene >= 5 && haeufigstes < schluessel.length && !Object.values(lm.seiten).some((d) => d.geaendert === lm.erzeugt), verschiedene);
 // Stichproben gegen git log
 const stichproben = ['/ki-telefonassistent', '/it-support/winterthur', '/blog/it-trifft-ot'].map((s) => {
     const e = eintraege.find((x) => (x.url === '' ? '/' : x.url) === s);
@@ -279,7 +283,8 @@ pruefe('P3b: SeitenKopf — Brotkrumen und rechts <Aktualisiert pfad={pfad} /> i
 const seitenkopfAufrufe = dateien(path.join(ROOT, 'src', 'app')).flatMap((p) => [...readFileSync(p, 'utf8').matchAll(/<SeitenKopf\b([\s\S]*?)\/>/g)].map((m) => ({ datei: rel(p), pfad: /\bpfad=\{(PFAD|KI_PREISE_PFAD|pfad)\}/.test(m[1]) })));
 pruefe(`P3b: alle ${seitenkopfAufrufe.length} Aufrufer von SeitenKopf übergeben ihren PFAD`, seitenkopfAufrufe.length === 12 && seitenkopfAufrufe.every((a) => a.pfad), seitenkopfAufrufe.filter((a) => !a.pfad).map((a) => a.datei).join(', '));
 const hubSeite = lies('src/app/(website)/ki-telefonassistent/page.tsx');
-pruefe('P3b: Hub — <Aktualisiert pfad={KI_BASIS} className="mt-6" /> direkt nach dem zweiten Absatz im Hero', /<p className="mt-4 text-base md:text-lg text-text-secondary max-w-\[38rem\]">\{HUB_TESTEN\}<\/p>\s*<Aktualisiert pfad=\{KI_BASIS\} className="mt-6" \/>\s*<\/KiDemo>/.test(hubSeite));
+// [01.11.2026] AUFTRAG-116 (Nachtrag N1): «Aktualisiert am» unter dem Demo-Widget (nach </KiDemo>, im selben Container), nicht mehr im Hero-Textblock
+pruefe('P3b/N1: Hub — <Aktualisiert pfad={KI_BASIS} className="mt-8" /> direkt nach </KiDemo> im selben Container, nicht mehr im Hero-Textblock', /\{HUB_TESTEN\}<\/p>\s*<\/KiDemo>\s*(\{\/\*[\s\S]*?\*\/\}\s*)?<Aktualisiert pfad=\{KI_BASIS\} className="mt-8" \/>\s*<\/div>\s*<\/section>/.test(hubSeite) && (hubSeite.match(/<Aktualisiert /g) ?? []).length === 1);
 
 /* ------------------------------------------------------------------ */
 /* P4 — Antwort-Kapsel                                                  */
@@ -298,7 +303,8 @@ pruefe('P4: zweiter Absatz wortgleich', hub.HUB_TESTEN === sollTesten, hub.HUB_T
 const woerter = hub.hubAntwort().split(/\s+/).filter(Boolean).length;
 pruefe(`P4: Kapsel 40–60 Wörter (${woerter})`, woerter >= 40 && woerter <= 60);
 pruefe('P4: kein Preis-Literal im Hub und in hub-texte.ts (Preis nur aus der Konstante)', !/CHF\s*49|\b49\b/.test(codeZeilen(lies('src/components/ki-telefonassistent/hub-texte.ts')).join('\n')) && !/CHF\s*49/.test(hubSeite));
-pruefe('P4: Hero-Markup — Überzeile mit Punkt, H1, <p id="antwort"> mit den bestehenden Klassen, zweiter Absatz', /motion-safe:animate-ping[\s\S]{0,200}\{HUB_UEBERZEILE\}/.test(hubSeite) && /<h1 className="mt-5 [^"]*">\s*\{HUB_H1\}\s*<\/h1>/.test(hubSeite) && /<p id="antwort" className="mt-5 text-lg md:text-xl text-text-secondary leading-relaxed max-w-\[38rem\]">\s*\{hubAntwort\(\)\}\s*<\/p>/.test(hubSeite));
+// [01.11.2026] AUFTRAG-116 (Nachtrag N1): Kapsel auf dem Handy eine Stufe kleiner, zweiter Absatz erst ab sm sichtbar (bleibt im DOM)
+pruefe('P4/N1: Hero-Markup — Überzeile mit Punkt, H1, <p id="antwort"> (text-base sm:text-lg md:text-xl), zweiter Absatz «hidden sm:block»', /motion-safe:animate-ping[\s\S]{0,200}\{HUB_UEBERZEILE\}/.test(hubSeite) && /<h1 className="mt-5 [^"]*">\s*\{HUB_H1\}\s*<\/h1>/.test(hubSeite) && /<p id="antwort" className="mt-5 text-base sm:text-lg md:text-xl text-text-secondary leading-relaxed max-w-\[38rem\]">\s*\{hubAntwort\(\)\}\s*<\/p>/.test(hubSeite) && /<p className="hidden sm:block mt-4 text-base md:text-lg text-text-secondary max-w-\[38rem\]">\{HUB_TESTEN\}<\/p>/.test(hubSeite));
 const hubAlt = ausHead('src/app/(website)/ki-telefonassistent/page.tsx').replace(/\r\n/g, '\n');
 const unveraendert = [/const TITEL = [^\n]+/, /const BESCHREIBUNG =\n[^\n]+/, /keywords: \[[^\n]+/, /kiSeitenSchemas\(KI_BASIS, '[^']+'/, /<KiDemo turnstileSiteKey=\{turnstileSiteKey\} begruessungNachStimme=\{begruessungNachStimme\}>/].filter((re) => re.exec(hubAlt)?.[0] !== re.exec(hubSeite)?.[0]);
 pruefe('P4: Titel, Beschreibung, Keywords, kiSeitenSchemas-Name und Demo-Widget unverändert (gegen 0cdaeff)', unveraendert.length === 0, unveraendert.map(String).join(', '));

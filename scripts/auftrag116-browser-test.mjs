@@ -16,7 +16,9 @@
  *     JSON-LD; Footer-Regionszeile mit 6 Links auf jeder geprüften Seite; nirgends href="/telefonie";
  *     hreflang x-default; Logo-Link mit aria-label; Startseiten-Titel; Brotkrumen-Zeile mit «Aktualisiert am»
  *     auf /ki-telefonassistent/funktionen (rechts neben den Brotkrumen bei 1280 px).
- * P2/P7  Sitemap 78 URLs mit echten lastmod; llms.txt und Schlüsseldatei werden ausgeliefert.
+ * N1  (Nachtrag 01.11.2026) Hub 375×812 dunkel/hell: #ki-demo-url beginnt bei y ≤ 600 px, zweiter Absatz im DOM aber
+ *     verborgen; 1280×720: #antwort im Bild, zweiter Absatz sichtbar; «Aktualisiert am» unter dem Demo-Widget.
+ * P2/P7  Sitemap 78 URLs, jede lastmod = Git-Datum aus lastmod.json; llms.txt und Schlüsseldatei werden ausgeliefert.
  * Screens: Hub-Hero dunkel/hell bei 1280 und 375, Footer-Regionszeile, Brotkrumen-Zeile mit «Aktualisiert am».
  *
  * Sicherheit: /api/demo/** im Browser abgefangen (418) — kein Scan, kein Anruf. Fremdadressen (Cloudflare,
@@ -301,10 +303,10 @@ try {
         await ctx.close();
     }
 
-    /* ---------------- P4/P3: Hub ---------------- */
+    /* ---------------- P4/P3: Hub (Nachtrag N1: Desktop 1280×720, Handy 375×812) ---------------- */
     for (const [vp, mobil, theme] of [
-        [{ width: 1280, height: 800 }, false, 'dark'],
-        [{ width: 1280, height: 800 }, false, 'light'],
+        [{ width: 1280, height: 720 }, false, 'dark'],
+        [{ width: 1280, height: 720 }, false, 'light'],
         [{ width: 375, height: 812 }, true, 'dark'],
         [{ width: 375, height: 812 }, true, 'light'],
     ]) {
@@ -337,6 +339,27 @@ try {
                 regionen: document.querySelectorAll('nav[aria-label="IT-Support nach Region"] a').length,
                 eingabeOben: Math.round(document.getElementById('ki-demo-url')?.getBoundingClientRect().top ?? -1),
                 fensterHoehe: window.innerHeight,
+                // [01.11.2026] AUFTRAG-116 (Nachtrag N1): Sichtbarkeit Kapsel/zweiter Absatz, Lage von «Aktualisiert am»
+                antwortImBild: (() => {
+                    const r = document.getElementById('antwort')?.getBoundingClientRect();
+                    return !!r && r.height > 0 && r.top < window.innerHeight && r.bottom > 0;
+                })(),
+                zweiterImDom: !!document.getElementById('antwort')?.nextElementSibling,
+                zweiterSichtbar: (() => {
+                    const z = document.getElementById('antwort')?.nextElementSibling;
+                    return !!z && getComputedStyle(z).display !== 'none' && z.getBoundingClientRect().height > 0;
+                })(),
+                aktualisiertLage: (() => {
+                    const p = t?.parentElement;
+                    const widget = p?.previousElementSibling;
+                    if (!p || !widget) return null;
+                    return {
+                        imContainer: p.parentElement?.parentElement === hero,
+                        nachWidget: widget.contains(document.getElementById('ki-demo-url')),
+                        imTextblock: !!document.getElementById('antwort')?.parentElement?.contains(p),
+                        abstand: Math.round(p.getBoundingClientRect().top - widget.getBoundingClientRect().bottom),
+                    };
+                })(),
             };
         });
         console.log(`INFO  Hub ${vp.width}×${vp.height}: Eingabefeld «Website» (#ki-demo-url) beginnt bei y = ${h.eingabeOben} px (Fensterhöhe ${h.fensterHoehe} px)`);
@@ -344,9 +367,17 @@ try {
         const wz = h.antwort.split(/\s+/).filter(Boolean).length;
         const name = `Hub ${vp.width} ${theme === 'dark' ? 'dunkel' : 'hell'}`;
         const soll = LM.seiten[KI_BASIS];
+        // [01.11.2026] AUFTRAG-116 (Nachtrag N1): Eingabefeld im ersten Bild, Kapsel ungekürzt, «Aktualisiert am» unter dem Widget
+        if (vp.width === 375) {
+            check(`N1 ${name} (375×812): Eingabefeld #ki-demo-url beginnt bei y ≤ 600 px (${h.eingabeOben} px)`, h.eingabeOben >= 0 && h.eingabeOben <= 600, `${h.eingabeOben} px`);
+            check(`N1 ${name}: zweiter Absatz im DOM, auf dem Handy verborgen (hidden sm:block)`, h.zweiterImDom && !h.zweiterSichtbar && h.zweiter === hub.HUB_TESTEN);
+        } else {
+            check(`N1 ${name} (1280×720): #antwort im Bild, zweiter Absatz sichtbar`, h.antwortImBild && h.zweiterSichtbar, JSON.stringify({ antwort: h.antwortImBild, zweiter: h.zweiterSichtbar }));
+        }
+        check(`N1 ${name}: «Aktualisiert am» unter dem Demo-Widget (nach dem Widget im selben Container, nicht im Hero-Textblock)`, !!h.aktualisiertLage && h.aktualisiertLage.imContainer && h.aktualisiertLage.nachWidget && !h.aktualisiertLage.imTextblock && h.aktualisiertLage.abstand >= 0, JSON.stringify(h.aktualisiertLage));
         check(`P4 ${name}: Überzeile, H1 (genau eine) und zweiter Absatz wortgleich`, h.ueberzeile === hub.HUB_UEBERZEILE && h.h1 === hub.HUB_H1 && h.h1Anzahl === 1 && h.zweiter === hub.HUB_TESTEN, `${h.ueberzeile} | ${h.h1} | ${h.zweiter}`);
         check(`P4 ${name}: #antwort wortgleich (Preis aus der Konstante), sichtbar, ${wz} Wörter (40–60)`, norm(h.antwort) === hub.hubAntwort() && wz >= 40 && wz <= 60 && h.antwortSichtbar, h.antwort.slice(-60));
-        check(`P3 ${name}: <time dateTime> im Hero = lastmod (${lastmod.datumTag(soll.geaendert)}), Text «Aktualisiert am ${lastmod.datumAnzeige(soll.geaendert)}»`, h.time?.dateTime === lastmod.datumTag(soll.geaendert) && h.time?.text === `Aktualisiert am ${lastmod.datumAnzeige(soll.geaendert)}`, JSON.stringify(h.time));
+        check(`P3 ${name}: <time dateTime> im Hero-Abschnitt = lastmod (${lastmod.datumTag(soll.geaendert)}), Text «Aktualisiert am ${lastmod.datumAnzeige(soll.geaendert)}»`, h.time?.dateTime === lastmod.datumTag(soll.geaendert) && h.time?.text === `Aktualisiert am ${lastmod.datumAnzeige(soll.geaendert)}`, JSON.stringify(h.time));
         check(`P3 ${name}: JSON-LD WebPage mit speakable (#antwort, h1), datePublished, dateModified`, JSON.stringify(h.speakable?.cssSelector) === JSON.stringify(['#antwort', 'h1']) && h.datePublished === lastmod.datumTag(soll.erstellt) && h.dateModified === soll.geaendert, `${h.datePublished} / ${h.dateModified}`);
         check(`P5 ${name}: Footer-Regionszeile 6 Links, kein href="/telefonie" im DOM`, h.regionen === 6 && h.telefonie === 0);
         check(`P8 ${name}: 0 CSP-Meldungen, 0 Seitenfehler`, meldungen.csp.length === 0 && meldungen.seitenfehler.length === 0, [...meldungen.csp, ...meldungen.seitenfehler].slice(0, 2).join(' | '));
@@ -354,6 +385,11 @@ try {
         await page.waitForTimeout(200);
         await page.screenshot({ path: path.join(SCREENS, `hub-hero-${vp.width}-${theme === 'dark' ? 'dunkel' : 'hell'}.png`) });
         if (vp.width === 1280) {
+            // [01.11.2026] AUFTRAG-116 (Nachtrag N1): «Aktualisiert am» unter dem Widget
+            const akt = page.locator('#live-test time').locator('xpath=..');
+            await akt.scrollIntoViewIfNeeded();
+            await page.waitForTimeout(200);
+            await page.screenshot({ path: path.join(SCREENS, `hub-aktualisiert-unter-widget-1280-${theme === 'dark' ? 'dunkel' : 'hell'}.png`) });
             const nav = page.locator('nav[aria-label="IT-Support nach Region"]');
             await nav.scrollIntoViewIfNeeded();
             await page.waitForTimeout(200);
@@ -413,7 +449,12 @@ try {
         const urls = [...xml.matchAll(/<url>[\s\S]*?<\/url>/g)].map((m) => ({ loc: /<loc>([^<]+)<\/loc>/.exec(m[0])?.[1], lastmod: /<lastmod>([^<]+)<\/lastmod>/.exec(m[0])?.[1] }));
         const verschieden = new Set(urls.map((u) => u.lastmod)).size;
         const hubLm = urls.find((u) => u.loc === `https://infraone.ch${KI_BASIS}`)?.lastmod;
-        check(`P2 /sitemap.xml: 78 URLs, jede mit lastmod, ${verschieden} verschiedene Daten (nicht mehr eine Build-Zeit)`, urls.length === 78 && urls.every((u) => !!u.lastmod) && verschieden >= 10, `${urls.length} URLs`);
+        // [01.11.2026] AUFTRAG-116 (Nachtrag): jede lastmod = Git-Datum aus lastmod.json (nach dem A-116-Commit teilen viele Seiten zu Recht dasselbe Datum)
+        const abweichendLm = urls.filter((u) => {
+            const pfad = u.loc.replace('https://infraone.ch', '') || '/';
+            return !LM.seiten[pfad] || Date.parse(u.lastmod) !== Date.parse(LM.seiten[pfad].geaendert);
+        });
+        check(`P2 /sitemap.xml: 78 URLs, jede lastmod = Git-Datum aus lastmod.json, ${verschieden} verschiedene Daten (nicht mehr eine Build-Zeit)`, urls.length === 78 && abweichendLm.length === 0 && verschieden >= 5, abweichendLm.map((u) => u.loc).join(', ') || `${urls.length} URLs`);
         check('P2 /sitemap.xml: lastmod des Hubs = letzter Commit seiner Quellen (lastmod.json)', !!hubLm && Date.parse(hubLm) === Date.parse(LM.seiten[KI_BASIS].geaendert), `${hubLm} = ${LM.seiten[KI_BASIS].geaendert}`);
         const key = await fetch(`${BASE}/${INDEXNOW_KEY}.txt`);
         const keyText = await key.text();

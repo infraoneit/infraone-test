@@ -54,7 +54,11 @@ function pruefe(name, bedingung, detail = '') {
     else fehl++;
     console.log(`${bedingung ? 'PASS' : 'FAIL'}  ${name}${detail ? ' — ' + String(detail).slice(0, 400) : ''}`);
 }
-const lies = (rel) => readFileSync(path.join(ROOT, rel), 'utf8');
+// [01.11.2026] AUFTRAG-116 (Nachtrag N3): Dateien mit LF-Zeilenenden lesen. Im Windows-Checkout (core.autocrlf=true)
+// stehen CRLF im Arbeitsbaum; Regex-Prüfungen mit «\n» (z. B. der @supports-Block in globals.css) schlugen dort fehl,
+// obwohl der Inhalt stimmt. Alle Lesezugriffe dieses Tests gehen über liesText().
+const liesText = (p) => readFileSync(p, 'utf8').replace(/\r\n/g, '\n');
+const lies = (rel) => liesText(path.join(ROOT, rel));
 const norm = (t) => t.replace(/\s+/g, ' ').trim();
 function dateien(d, re = /\.(ts|tsx)$/) {
     if (!existsSync(d)) return [];
@@ -79,7 +83,7 @@ function auftragsDatei() {
 }
 const AUFTRAG_PFAD = auftragsDatei();
 pruefe('Auftragsdatei AUFTRAG-114.md gefunden (Quelle der Soll-Texte)', !!AUFTRAG_PFAD, AUFTRAG_PFAD ?? 'nicht gefunden');
-const AUFTRAG = AUFTRAG_PFAD ? readFileSync(AUFTRAG_PFAD, 'utf8').replace(/\r\n/g, '\n') : '';
+const AUFTRAG = AUFTRAG_PFAD ? liesText(AUFTRAG_PFAD) : '';
 const AUFTRAG_NORM = norm(AUFTRAG);
 
 /* ------------------------------------------------------------------ */
@@ -98,12 +102,12 @@ pruefe('P1a: mobile body-Regel endet auf overflow-x: clip (body kein Scroll-Cont
 // Prüfliste: Dateien mit overflow-hidden UND Reveal-Kindern; keine davon scrollt programmatisch
 const quellen = dateien(path.join(ROOT, 'src'), /\.tsx$/);
 const pruefliste = quellen.filter((p) => {
-    const t = readFileSync(p, 'utf8');
+    const t = liesText(p);
     return /\boverflow-hidden\b/.test(t) && /AnimatedSection|StaggerContainer|StaggerItem|\breveal\b/.test(t);
 });
-const scrollend = pruefliste.filter((p) => /\.scrollLeft\b|\.scrollTo\(|\.scrollBy\(|\.scrollTop\s*=/.test(readFileSync(p, 'utf8').replace(/window\.scrollTo\(/g, '')));
+const scrollend = pruefliste.filter((p) => /\.scrollLeft\b|\.scrollTo\(|\.scrollBy\(|\.scrollTop\s*=/.test(liesText(p).replace(/window\.scrollTo\(/g, '')));
 pruefe(`P1a: Prüfliste ${pruefliste.length} Dateien mit overflow-hidden und Reveal-Kindern — keine scrollt ein Element programmatisch (scrollLeft/scrollTo/scrollBy/scrollTop=)`, pruefliste.length >= 20 && scrollend.length === 0, scrollend.map(rel).join(', ') || pruefliste.map(rel).join(', '));
-const scrollIntoViewDateien = quellen.filter((p) => /scrollIntoView/.test(readFileSync(p, 'utf8'))).map(rel);
+const scrollIntoViewDateien = quellen.filter((p) => /scrollIntoView/.test(liesText(p))).map(rel);
 pruefe('P1a: scrollIntoView nur in ScrollToTop, KiDemo, SupportKostenRechner (scrollen Ziele in den Viewport, nicht die clip-Elemente)', JSON.stringify(scrollIntoViewDateien.sort()) === JSON.stringify(['src/components/layout/ScrollToTop.tsx', 'src/components/tools/KiDemo.tsx', 'src/components/tools/SupportKostenRechner.tsx']), scrollIntoViewDateien.join(', '));
 
 const layout = lies('src/app/(website)/layout.tsx');
@@ -187,7 +191,7 @@ const suchbereich = [
     ...dateien(path.join(ROOT, 'content'), /.*/),
 ];
 const anbieterTreffer = suchbereich.flatMap((p) =>
-    readFileSync(p, 'utf8')
+    liesText(p)
         .split(/\r?\n/)
         .map((z, i) => (ANBIETER_RE.test(z) ? `${rel(p)}:${i + 1}` : null))
         .filter(Boolean),
@@ -207,7 +211,7 @@ const satzStellen = [
 ];
 const fehlendeStellen = satzStellen.filter(([d, re]) => !re.test(lies(d))).map(([d]) => d);
 pruefe('P3: Ersatzsatz an allen Fundstellen (Hub, Sicherheit 3×: Lead/Tabelle/Rechtsrahmen, FAQ, Funktionen)', fehlendeStellen.length === 0, fehlendeStellen.join(', '));
-pruefe('P3: keine Resource Hints (<link href=…>) auf fonts.googleapis.com / fonts.gstatic.com im Quelltext', !dateien(path.join(ROOT, 'src')).some((p) => /href=["'{`]*https:\/\/fonts\.(googleapis|gstatic)\.com/.test(readFileSync(p, 'utf8'))) && !/<link rel="(dns-prefetch|preconnect)"/.test(layout));
+pruefe('P3: keine Resource Hints (<link href=…>) auf fonts.googleapis.com / fonts.gstatic.com im Quelltext', !dateien(path.join(ROOT, 'src')).some((p) => /href=["'{`]*https:\/\/fonts\.(googleapis|gstatic)\.com/.test(liesText(p))) && !/<link rel="(dns-prefetch|preconnect)"/.test(layout));
 
 /* ------------------------------------------------------------------ */
 /* P4 — Preise, SMS verfügbar                                           */
@@ -245,14 +249,14 @@ pruefe('P4: KALENDER_SATZ wortgleich aus dem Auftrag', AUFTRAG_NORM.includes(nor
 // Verwendungen im Code (Kommentarzeilen, die den alten Namen nennen, zählen nicht)
 const codeZeilen = (t) => t.split(/\r?\n/).filter((z) => !/^\s*(\/\/|\/?\*)/.test(z)).join('\n');
 const smsSatzReste = [...dateien(path.join(ROOT, 'src')), ...dateien(path.join(ROOT, 'scripts'), /\.mjs$/)]
-    .filter((p) => rel(p) !== 'scripts/auftrag114-einheit-test.mjs' && /\bKALENDER_SMS_SATZ\b/.test(codeZeilen(readFileSync(p, 'utf8'))))
+    .filter((p) => rel(p) !== 'scripts/auftrag114-einheit-test.mjs' && /\bKALENDER_SMS_SATZ\b/.test(codeZeilen(liesText(p))))
     .map(rel);
 pruefe('P4: KALENDER_SMS_SATZ entfernt, alle Verwendungen auf KALENDER_SATZ umgestellt', !('KALENDER_SMS_SATZ' in entw) && smsSatzReste.length === 0, smsSatzReste.join(', '));
 const SMS_IN_ENTWICKLUNG = /in Entwicklung|inEntwicklung|IN_ENTWICKLUNG|künftig|kommt bald|noch nicht/i;
 const smsDateien = [...dateien(path.join(ROOT, 'src')), path.join(ROOT, 'public', 'llms.txt'), path.join(ROOT, 'public', 'llms-full.txt')];
 let smsZeilen = 0;
 const smsTreffer = smsDateien.flatMap((p) =>
-    readFileSync(p, 'utf8')
+    liesText(p)
         .split(/\r?\n/)
         .map((z, i) => {
             if (!/SMS/.test(z)) return null;

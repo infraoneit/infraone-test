@@ -172,7 +172,7 @@ export default function KiTelefonassistentPage() {
                     <KiDemo turnstileSiteKey={turnstileSiteKey} begruessungNachStimme={begruessungNachStimme}>
                         {/* [01.11.2026] AUFTRAG-116 (P4): Antwort-Kapsel — Überzeile, H1 und zwei Absätze wortgleich aus dem
                             Auftrag (Texte in components/ki-telefonassistent/hub-texte.ts, Preis aus der Preis-Konstante),
-                            darunter «Aktualisiert am …». Titel, Beschreibung, Keywords und Widget unverändert. */}
+                            «Aktualisiert am …» unter dem Widget (Nachtrag N1). Titel, Beschreibung, Keywords und Widget unverändert. */}
                         <p className="inline-flex items-center gap-2 text-sm font-medium text-text-secondary">
                             <span className="relative flex w-2 h-2" aria-hidden="true">
                                 <span className="absolute inset-0 rounded-full bg-primary opacity-60 motion-safe:animate-ping" />
@@ -183,12 +183,18 @@ export default function KiTelefonassistentPage() {
                         <h1 className="mt-5 text-[2.4rem] leading-[1.04] sm:text-5xl lg:text-[3.5rem] xl:text-[3.9rem] font-bold tracking-[-0.035em] text-text-primary text-balance">
                             {HUB_H1}
                         </h1>
-                        <p id="antwort" className="mt-5 text-lg md:text-xl text-text-secondary leading-relaxed max-w-[38rem]">
+                        {/* [01.11.2026] AUFTRAG-116 (Nachtrag N1): Handy eine Schriftstufe kleiner (text-base), damit das
+                            Eingabefeld #ki-demo-url bei 375×812 im ersten Bild bleibt (Ziel ≤ 600 px); Kapsel ungekürzt. */}
+                        <p id="antwort" className="mt-5 text-base sm:text-lg md:text-xl text-text-secondary leading-relaxed max-w-[38rem]">
                             {hubAntwort()}
                         </p>
-                        <p className="mt-4 text-base md:text-lg text-text-secondary max-w-[38rem]">{HUB_TESTEN}</p>
-                        <Aktualisiert pfad={KI_BASIS} className="mt-6" />
+                        {/* [01.11.2026] AUFTRAG-116 (Nachtrag N1): zweiter Absatz erst ab sm sichtbar (bleibt im DOM) —
+                            auf dem Handy erklärt sich das Eingabefeld direkt darunter selbst. */}
+                        <p className="hidden sm:block mt-4 text-base md:text-lg text-text-secondary max-w-[38rem]">{HUB_TESTEN}</p>
                     </KiDemo>
+                    {/* [01.11.2026] AUFTRAG-116 (Nachtrag N1): «Aktualisiert am …» unter dem Demo-Widget statt im Hero-Textblock,
+                        damit es das Eingabefeld nicht nach unten drückt. */}
+                    <Aktualisiert pfad={KI_BASIS} className="mt-8" />
                 </div>
             </section>
 
