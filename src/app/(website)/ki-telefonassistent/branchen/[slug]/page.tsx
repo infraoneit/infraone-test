@@ -77,7 +77,8 @@ export default async function BranchenSeite({ params }: { params: Promise<{ slug
         <>
             <JsonLd daten={kiSeitenSchemas(pfad, b.h1, b.metaBeschreibung, krumen)} />
 
-            <SeitenKopf krumen={krumen} eyebrow={`Branche: ${b.name}`} titel={b.h1} lead={<p>{b.lead}</p>} />
+            {/* [01.11.2026] AUFTRAG-116: pfad für «Aktualisiert am …» in der Brotkrumen-Zeile */}
+            <SeitenKopf pfad={pfad} krumen={krumen} eyebrow={`Branche: ${b.name}`} titel={b.h1} lead={<p>{b.lead}</p>} />
 
             {/* Alltag der Branche */}
             <Abschnitt titel={b.alltag.titel} hintergrund="surface">

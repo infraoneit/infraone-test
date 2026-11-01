@@ -391,6 +391,43 @@ export function renderJsonLd(schema: any): string {
 
 import { BASE_URL } from '@/lib/constants';
 import { PAKETE, PREISE_FREIGEGEBEN } from '@/lib/ki-telefonassistent-preise';
+// [01.11.2026] AUFTRAG-116: Aktualitätssignale (Git-Daten je Seite) und Hub-Pfad für speakable
+import { datumTag, seitenDatum } from '@/lib/seo/lastmod';
+import { KI_BASIS } from '@/components/ki-telefonassistent/seiten';
+
+/**
+ * [01.11.2026] AUFTRAG-116 (P6): Entitäts-Merkmale der Firma — identisch in generateOrganizationSchemaExtended()
+ * und generateSitewideLocalBusinessSchema() (gleiche @id /#organization). UID aus dem Impressum
+ * (impressum/page.tsx). `numberOfEmployees` entfällt (keine Belegquelle; 10 im Schema vs. 5 in llms.txt).
+ */
+export const ENTITAET_MERKMALE = {
+    legalName: 'InfraOne IT Solutions GmbH',
+    vatID: 'CHE-288.114.187 MWST',
+    taxID: 'CHE-288.114.187',
+    identifier: { '@type': 'PropertyValue', propertyID: 'UID', value: 'CHE-288.114.187' },
+    knowsAbout: ['KI-Telefonassistent', 'Cloud-Telefonie', 'VoIP', 'IT-Support', 'Webdesign', 'Digital Signage', 'Microsoft 365', 'IT-Sicherheit', 'IT-Netzwerke', 'WLAN', 'Videoüberwachung'],
+    knowsLanguage: ['de-CH', 'de', 'en'],
+} as const;
+
+/** [01.11.2026] AUFTRAG-116 (P6): bediente Gebiete (Land und Hauptregionen) */
+export const ENTITAET_GEBIETE = [
+    { '@type': 'Country', name: 'Schweiz' },
+    { '@type': 'AdministrativeArea', name: 'Winterthur' },
+    { '@type': 'AdministrativeArea', name: 'Zürich' },
+    { '@type': 'AdministrativeArea', name: 'Schaffhausen' },
+    { '@type': 'AdministrativeArea', name: 'Thurgau' },
+    { '@type': 'AdministrativeArea', name: 'St. Gallen' },
+] as const;
+
+/**
+ * [01.11.2026] AUFTRAG-116 (P6): Umkreis um den Hauptsitz — derselbe GeoCircle wie in generateMainBusinessSchema()
+ * (gleiche @id). Im sitewide LocalBusiness steht er VOR der Gebietsliste (areaServed: [GeoCircle, …Liste]).
+ */
+const GEO_CIRCLE_HAUPTSITZ = {
+    '@type': 'GeoCircle',
+    geoMidpoint: { '@type': 'GeoCoordinates', latitude: 47.4996, longitude: 8.7243 },
+    geoRadius: '50000',
+} as const;
 
 /**
  * Generiert LocalBusiness Schema für das Layout (sitewide)
@@ -402,6 +439,9 @@ export function generateSitewideLocalBusinessSchema() {
         '@type': 'LocalBusiness',
         '@id': `${BASE_URL}/#organization`,
         name: 'InfraOne IT Solutions GmbH',
+        // [01.11.2026] AUFTRAG-116: legalName, vatID, taxID, identifier (UID), knowsAbout, knowsLanguage, areaServed
+        ...ENTITAET_MERKMALE,
+        areaServed: [GEO_CIRCLE_HAUPTSITZ, ...ENTITAET_GEBIETE],
         url: BASE_URL,
         telephone: '+41522221818',
         email: 'info@infraone.ch',
@@ -825,10 +865,9 @@ export function generateOrganizationSchemaExtended(): WithContext<Organization> 
             'https://www.linkedin.com/in/infraone-it-solutions',
         ],
         foundingDate: '2015',
-        numberOfEmployees: {
-            '@type': 'QuantitativeValue',
-            value: 10,
-        },
+        // [01.11.2026] AUFTRAG-116: numberOfEmployees entfernt (keine Belegquelle); Entitäts-Merkmale und Gebiete ergänzt
+        ...ENTITAET_MERKMALE,
+        areaServed: ENTITAET_GEBIETE,
     };
 }
 
@@ -1627,8 +1666,13 @@ export function generateKiTelefonassistentOfferCatalog() {
 /**
  * WebPage einer Unterseite des KI-Bereichs: gehört zur Website, handelt vom
  * Service (about) und verweist auf die Brotkrumen.
+ *
+ * [01.11.2026] AUFTRAG-116 (P3a): `pfad` (ab Domain) liefert über seitenDatum() die Git-Daten der Seite:
+ * datePublished = erstellt (nur Datum YYYY-MM-DD), dateModified = geaendert (ISO mit Zeit); dazu publisher
+ * (Verweis auf die Organisation). Der Hub erhält speakable (#antwort = Antwort-Kapsel, h1).
  */
-export function generateKiSeitenSchema(url: string, name: string, description: string) {
+export function generateKiSeitenSchema(url: string, name: string, description: string, pfad: string) {
+    const datum = seitenDatum(pfad);
     return {
         '@context': 'https://schema.org',
         '@type': 'WebPage',
@@ -1640,6 +1684,9 @@ export function generateKiSeitenSchema(url: string, name: string, description: s
         isPartOf: { '@id': `${BASE_URL}/#website` },
         about: { '@id': KI_SERVICE_ID },
         breadcrumb: { '@id': `${url}#breadcrumb` },
+        ...(datum && { datePublished: datumTag(datum.erstellt), dateModified: datum.geaendert }),
+        publisher: { '@id': `${BASE_URL}/#organization` },
+        ...(pfad === KI_BASIS && { speakable: { '@type': 'SpeakableSpecification', cssSelector: ['#antwort', 'h1'] } }),
     };
 }
 

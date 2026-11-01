@@ -44,7 +44,9 @@ export default function SicherheitDatenschutzSeite() {
         <>
             <JsonLd daten={kiSeitenSchemas(PFAD, 'Sicherheit und Datenschutz beim KI-Telefonassistenten', BESCHREIBUNG, krumen)} />
 
+            {/* [01.11.2026] AUFTRAG-116: pfad für «Aktualisiert am …» in der Brotkrumen-Zeile */}
             <SeitenKopf
+                pfad={PFAD}
                 krumen={krumen}
                 eyebrow="Sicherheit und Datenschutz"
                 titel="Sicherheit und Datenschutz beim KI-Telefonassistenten"

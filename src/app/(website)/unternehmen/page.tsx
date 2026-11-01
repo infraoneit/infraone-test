@@ -20,6 +20,7 @@ export const metadata: Metadata = {
         canonical: 'https://infraone.ch/unternehmen',
         languages: {
             'de-CH': 'https://infraone.ch/unternehmen',
+            'x-default': 'https://infraone.ch/unternehmen', // [01.11.2026] AUFTRAG-116: hreflang x-default
         },
     },
 };

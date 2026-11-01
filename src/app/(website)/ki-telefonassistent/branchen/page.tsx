@@ -42,7 +42,9 @@ export default function BranchenSeite() {
         <>
             <JsonLd daten={[...kiSeitenSchemas(PFAD, 'KI-Telefonassistent nach Branchen', BESCHREIBUNG, krumen), itemList]} />
 
+            {/* [01.11.2026] AUFTRAG-116: pfad für «Aktualisiert am …» in der Brotkrumen-Zeile */}
             <SeitenKopf
+                pfad={PFAD}
                 krumen={krumen}
                 eyebrow="Branchen"
                 titel="KI-Telefonassistent für Ihre Branche"

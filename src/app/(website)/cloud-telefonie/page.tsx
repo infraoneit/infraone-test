@@ -24,6 +24,7 @@ export const metadata: Metadata = {
         canonical: 'https://infraone.ch/cloud-telefonie',
         languages: {
             'de-CH': 'https://infraone.ch/cloud-telefonie',
+            'x-default': 'https://infraone.ch/cloud-telefonie', // [01.11.2026] AUFTRAG-116: hreflang x-default
         },
     },
 };

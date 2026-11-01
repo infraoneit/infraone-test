@@ -1,6 +1,49 @@
 import type { NextConfig } from "next";
 
+/**
+ * [01.11.2026] AUFTRAG-116 (P8): Sicherheits-Header fuer alle Seiten ausser Keystatic-Admin und API.
+ * Netlify-Header aus netlify.toml/_headers gelten nicht fuer Antworten der Next-Funktion, darum hier.
+ * Nur in Produktion: `next dev` braucht 'unsafe-eval' und bleibt ohne CSP. HSTS setzt Netlify (unveraendert).
+ * Externe Quellen (Inventar im Bericht A116): Cloudflare Web Analytics (Skript static.cloudflareinsights.com,
+ * Meldung an cloudflareinsights.com), Turnstile (challenges.cloudflare.com: Skript, iframe, Abfragen),
+ * Google-Maps-iframe auf /kontakt (www.google.com/maps/embed), Firmenlogos der Demo (eigener Proxy, dazu
+ * img-src https:), Schriften ueber next/font aus dem eigenen Hosting, Netlify Forms POST auf /__forms.html.
+ */
+const CONTENT_SECURITY_POLICY = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com https://challenges.cloudflare.com",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob: https:",
+  "font-src 'self' data:",
+  "connect-src 'self' https://cloudflareinsights.com https://challenges.cloudflare.com",
+  "frame-src https://www.google.com https://maps.google.com https://challenges.cloudflare.com",
+  "media-src 'self' blob:",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "frame-ancestors 'self'",
+  "upgrade-insecure-requests",
+].join("; ");
+
+const SICHERHEITS_HEADER = [
+  { key: "Content-Security-Policy", value: CONTENT_SECURITY_POLICY },
+  { key: "X-Frame-Options", value: "SAMEORIGIN" },
+  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+  { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), payment=(), usb=()" },
+];
+
 const nextConfig: NextConfig = {
+  // [01.11.2026] AUFTRAG-116: Sicherheits-Header (nur Produktion; Keystatic und /api/ ausgenommen)
+  async headers() {
+    if (process.env.NODE_ENV !== "production") return [];
+    return [
+      {
+        source: "/((?!keystatic|api/).*)",
+        headers: SICHERHEITS_HEADER,
+      },
+    ];
+  },
+
   // React Compiler fuer bessere Performance
   reactCompiler: true,
   

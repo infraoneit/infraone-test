@@ -37,7 +37,9 @@ export default function FunktionenSeite() {
         <>
             <JsonLd daten={[...kiSeitenSchemas(PFAD, 'Funktionen des KI-Telefonassistenten', BESCHREIBUNG, krumen), itemList]} />
 
+            {/* [01.11.2026] AUFTRAG-116: pfad für «Aktualisiert am …» in der Brotkrumen-Zeile */}
             <SeitenKopf
+                pfad={PFAD}
                 krumen={krumen}
                 eyebrow="Funktionen"
                 titel="Was der KI-Telefonassistent kann"

@@ -51,7 +51,9 @@ export default function GlossarSeite() {
         <>
             <JsonLd daten={[...kiSeitenSchemas(PFAD, 'Glossar KI-Telefonie', BESCHREIBUNG, krumen), generateDefinedTermSetSchema(`${BASE_URL}${PFAD}`, 'Glossar KI-Telefonie', BEGRIFFE)]} />
 
+            {/* [01.11.2026] AUFTRAG-116: pfad für «Aktualisiert am …» in der Brotkrumen-Zeile */}
             <SeitenKopf
+                pfad={PFAD}
                 krumen={krumen}
                 eyebrow="Glossar"
                 titel="Glossar: Begriffe der KI-Telefonie"

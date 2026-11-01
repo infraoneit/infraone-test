@@ -559,7 +559,8 @@ export function Header() {
                 <div className="container mx-auto px-4">
                     <div className="flex items-center justify-between h-16 lg:h-20">
                         {/* Logo - Show dark logo in light mode, light logo in dark mode */}
-                        <Link href="/" className="relative z-[110] flex-shrink-0" onPointerEnter={mausRein(null)}>
+                        {/* [01.11.2026] AUFTRAG-116: Ankertext für den Logo-Link (Link-Checker: «link without anchor text») */}
+                        <Link href="/" aria-label="InfraOne IT Solutions – Startseite" className="relative z-[110] flex-shrink-0" onPointerEnter={mausRein(null)}>
                             {/* AUFTRAG-100: width/height im echten Seitenverhältnis der SVGs (viewBox), sonst verschiebt sich die Leiste beim Laden */}
                             <Image
                                 src="/infraone-logo-schwarz.svg"

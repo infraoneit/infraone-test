@@ -39,6 +39,9 @@ import { faqFuerSchema, faqNachIds, HUB_FAQ_IDS } from '@/components/ki-telefona
 import { ANWENDUNGEN } from '@/components/ki-telefonassistent/inhalte/anwendungen';
 import { BRANCHEN } from '@/components/ki-telefonassistent/inhalte/branchen';
 import { KI_BASIS } from '@/components/ki-telefonassistent/seiten';
+// [01.11.2026] AUFTRAG-116: Antwort-Kapsel und «Aktualisiert am …»
+import { HUB_H1, HUB_TESTEN, HUB_UEBERZEILE, hubAntwort } from '@/components/ki-telefonassistent/hub-texte';
+import { Aktualisiert } from '@/components/ki-telefonassistent/Aktualisiert';
 
 // Hero und Widget: unverändert aus AUFTRAG-092/095/098 (Widget gehört AUFTRAG-109, nur eingebettet).
 // AUFTRAG-110: Seite wird Hub des Bereichs mit Unterseiten; Texte unterhalb des Heros neu.
@@ -167,19 +170,24 @@ export default function KiTelefonassistentPage() {
                 </div>
                 <div className="container mx-auto px-4 relative">
                     <KiDemo turnstileSiteKey={turnstileSiteKey} begruessungNachStimme={begruessungNachStimme}>
+                        {/* [01.11.2026] AUFTRAG-116 (P4): Antwort-Kapsel — Überzeile, H1 und zwei Absätze wortgleich aus dem
+                            Auftrag (Texte in components/ki-telefonassistent/hub-texte.ts, Preis aus der Preis-Konstante),
+                            darunter «Aktualisiert am …». Titel, Beschreibung, Keywords und Widget unverändert. */}
                         <p className="inline-flex items-center gap-2 text-sm font-medium text-text-secondary">
                             <span className="relative flex w-2 h-2" aria-hidden="true">
                                 <span className="absolute inset-0 rounded-full bg-primary opacity-60 motion-safe:animate-ping" />
                                 <span className="relative w-2 h-2 rounded-full bg-primary" />
                             </span>
-                            KI-Telefonassistent für Schweizer KMU
+                            {HUB_UEBERZEILE}
                         </p>
                         <h1 className="mt-5 text-[2.4rem] leading-[1.04] sm:text-5xl lg:text-[3.5rem] xl:text-[3.9rem] font-bold tracking-[-0.035em] text-text-primary text-balance">
-                            Erleben Sie Ihren KI-Telefonassistenten – in einer Minute
+                            {HUB_H1}
                         </h1>
-                        <p className="mt-5 text-lg md:text-xl text-text-secondary leading-relaxed max-w-[38rem]">
-                            Geben Sie Ihre Website ein – wir bauen daraus einen Assistenten mit Ihrem Namen, Ihrem Logo und Ihrem Wissen und rufen Sie an. Auf Deutsch, auf Englisch, auf Wunsch auch auf Schweizerdeutsch.
+                        <p id="antwort" className="mt-5 text-lg md:text-xl text-text-secondary leading-relaxed max-w-[38rem]">
+                            {hubAntwort()}
                         </p>
+                        <p className="mt-4 text-base md:text-lg text-text-secondary max-w-[38rem]">{HUB_TESTEN}</p>
+                        <Aktualisiert pfad={KI_BASIS} className="mt-6" />
                     </KiDemo>
                 </div>
             </section>

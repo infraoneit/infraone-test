@@ -1,6 +1,11 @@
 import Link from 'next/link';
+import { Fragment } from 'react';
 import { Phone, Mail, MapPin, Clock, ExternalLink, Facebook, Instagram, Linkedin } from 'lucide-react';
 import { FernwartungDialog } from '@/components/support/FernwartungDialog';
+// [01.11.2026] AUFTRAG-116: sitewide Regionszeile (IT-Support nach Region)
+import { IT_SUPPORT_REGIONEN } from '@/lib/regionen';
+
+const regionen = IT_SUPPORT_REGIONEN;
 
 const footerLinks = {
     services: [
@@ -11,7 +16,7 @@ const footerLinks = {
         { label: 'IT-Sicherheit', href: '/it-sicherheit' },
         { label: 'Microsoft 365', href: '/microsoft-365' },
         { label: 'WLAN', href: '/wlan' },
-        { label: 'Telefonie & Kommunikation', href: '/telefonie' },
+        // [01.11.2026] AUFTRAG-116: «Telefonie & Kommunikation» (/telefonie, nur Weiterleitung) entfernt — Cloud-Telefonie steht oben
         { label: 'Videoüberwachung', href: '/videoueberwachung' },
         { label: 'Webdesign', href: '/webdesign' },
         { label: 'KI & Software-Entwicklung', href: '/software-entwicklung' },
@@ -283,6 +288,12 @@ export function Footer() {
                         </ul>
                     </div>
                 </div>
+
+                {/* [01.11.2026] AUFTRAG-116: sitewide Links auf die sechs IT-Support-Regionen (zwischen Linkspalten und unterer Leiste) */}
+                <nav aria-label="IT-Support nach Region" className="mt-10 pt-8 border-t border-border text-sm text-text-secondary">
+                    <span className="font-semibold text-text-primary">IT-Support in Ihrer Region:</span>{' '}
+                    {regionen.map((r, i) => (<Fragment key={r.slug}>{i > 0 && <span aria-hidden="true"> · </span>}<Link href={`/it-support/${r.slug}`} className="hover:text-primary underline-offset-4 hover:underline">{r.name}</Link></Fragment>))}
+                </nav>
             </div>
 
             {/* Bottom Bar */}

@@ -96,7 +96,9 @@ export default function SoFunktioniertEsSeite() {
         <>
             <JsonLd daten={[...kiSeitenSchemas(PFAD, 'So funktioniert der KI-Telefonassistent', BESCHREIBUNG, krumen), howTo]} />
 
+            {/* [01.11.2026] AUFTRAG-116: pfad für «Aktualisiert am …» in der Brotkrumen-Zeile */}
             <SeitenKopf
+                pfad={PFAD}
                 krumen={krumen}
                 eyebrow="So funktioniert es"
                 titel="Vom Testanruf zum eigenen Assistenten"

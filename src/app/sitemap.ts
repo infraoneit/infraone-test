@@ -1,148 +1,28 @@
-import { MetadataRoute } from 'next';
-import fs from 'fs';
-import path from 'path';
+import type { MetadataRoute } from 'next';
 import { BASE_URL } from '@/lib/constants';
-import { KI_BASIS, KI_PREISE_PFAD, KI_SEITEN } from '@/components/ki-telefonassistent/seiten';
-import { PREISE_FREIGEGEBEN } from '@/lib/ki-telefonassistent-preise';
+import { alleSeiten } from '@/lib/seo/seitenliste';
+import { seitenDatum } from '@/lib/seo/lastmod';
 
 /**
- * Liest alle Blog-Slugs aus content/blog/
- * Filter: nur .json-Dateien (jeder Blog-Post hat eine JSON-Metadata-Datei)
+ * Sitemap (/sitemap.xml).
+ *
+ * [01.11.2026] AUFTRAG-116 (P2c): Die Seitenliste (URLs, Prioritäten, Frequenzen) kommt aus
+ * src/lib/seo/seitenliste.ts (`alleSeiten()`, gleiche Liste wie bisher, auch für die Prüfskripte).
+ * lastModified ist das echte Änderungsdatum je Seite (letzter Commit ihrer Quellen) aus
+ * src/generated/lastmod.json (statischer Import über `seitenDatum`) statt einer gemeinsamen Build-Zeit.
+ * Fehlt ein Eintrag: Build-Datum und Warnung im Build-Log.
  */
-function readBlogSlugs(): string[] {
-    const blogDir = path.join(process.cwd(), 'content', 'blog');
-    if (!fs.existsSync(blogDir)) return [];
-    return fs.readdirSync(blogDir, { withFileTypes: true })
-        .filter(d => d.isFile() && d.name.endsWith('.json'))
-        .map(d => d.name.replace('.json', ''));
-}
-
-/**
- * Liest alle IT-Support-Region-Slugs aus content/leistungen/it-support-regions/
- */
-function readITSupportRegionSlugs(): string[] {
-    const dir = path.join(process.cwd(), 'content', 'leistungen', 'it-support-regions');
-    if (!fs.existsSync(dir)) return [];
-    return fs.readdirSync(dir, { withFileTypes: true })
-        .filter(d => d.isFile() && d.name.endsWith('.json'))
-        .map(d => d.name.replace('.json', ''));
-}
-
-/**
- * Liest alle Webdesign-Region-Slugs aus content/leistungen/webdesign-regions/
- */
-function readWebdesignRegionSlugs(): string[] {
-    const dir = path.join(process.cwd(), 'content', 'leistungen', 'webdesign-regions');
-    if (!fs.existsSync(dir)) return [];
-    return fs.readdirSync(dir, { withFileTypes: true })
-        .filter(d => d.isFile() && d.name.endsWith('.json'))
-        .map(d => d.name.replace('.json', ''));
-}
-
-/**
- * Liest alle Cloud-Telefonie-Region-Slugs aus content/leistungen/cloud-telefonie-regions/
- */
-function readCloudTelefonieRegionSlugs(): string[] {
-    const dir = path.join(process.cwd(), 'content', 'leistungen', 'cloud-telefonie-regions');
-    if (!fs.existsSync(dir)) return [];
-    return fs.readdirSync(dir, { withFileTypes: true })
-        .filter(d => d.isFile() && d.name.endsWith('.json'))
-        .map(d => d.name.replace('.json', ''));
-}
-
 export default function sitemap(): MetadataRoute.Sitemap {
-    const currentDate = new Date();
+    const buildDatum = new Date();
 
-    // Hauptseiten
-    const mainPages = [
-        { url: '', priority: 1.0, changeFrequency: 'weekly' as const },
-        { url: '/leistungen', priority: 0.9, changeFrequency: 'weekly' as const },
-        { url: '/kontakt', priority: 0.9, changeFrequency: 'monthly' as const },
-        { url: '/unternehmen', priority: 0.8, changeFrequency: 'monthly' as const },
-        { url: '/partner', priority: 0.7, changeFrequency: 'monthly' as const },
-        { url: '/blog', priority: 0.8, changeFrequency: 'weekly' as const },
-    ];
-
-    // Service-Hubs (ohne /telefonie - wird in Welle 1.F auf /cloud-telefonie redirected)
-    const servicePages = [
-        { url: '/it-support', priority: 1.0 },
-        { url: '/webdesign', priority: 1.0 },
-        { url: '/cloud-telefonie', priority: 1.0 },
-        { url: '/ki-telefonassistent', priority: 0.9 },
-        { url: '/digital-signage', priority: 0.9 },
-        { url: '/it-netzwerke', priority: 0.8 },
-        { url: '/it-sicherheit', priority: 0.8 },
-        { url: '/microsoft-365', priority: 0.8 },
-        { url: '/wlan', priority: 0.8 },
-        { url: '/videoueberwachung', priority: 0.8 },
-        { url: '/software-entwicklung', priority: 0.8 },
-    ];
-
-    // AUFTRAG-110: Bereich KI-Telefonassistent (Hub steht oben bei den Service-Hubs).
-    // Die Preisseite erst nach Freigabe der Preise (vorher noindex).
-    const kiTelefonassistentPages = KI_SEITEN.filter((s) => s.pfad !== KI_BASIS)
-        .filter((s) => PREISE_FREIGEGEBEN || s.pfad !== KI_PREISE_PFAD)
-        .map((s) => ({ url: s.pfad, priority: s.prioritaet }));
-
-    // Cloud-Telefonie Technologie-Varianten (eigene SEO-Landings)
-    const cloudTelefonieVariants = [
-        { url: '/cloud-telefonie/3cx', priority: 0.8 },
-        { url: '/cloud-telefonie/ms-teams', priority: 0.8 },
-        { url: '/cloud-telefonie/yeastar', priority: 0.8 },
-    ];
-
-    // Webdesign-Regionen (dynamisch aus content/)
-    const webdesignRegions = readWebdesignRegionSlugs();
-
-    // IT-Support-Regionen (dynamisch aus content/)
-    const itSupportRegions = readITSupportRegionSlugs();
-
-    // Cloud-Telefonie-Regionen (dynamisch aus content/)
-    const cloudTelefonieRegions = readCloudTelefonieRegionSlugs();
-
-    // Blog-Posts (dynamisch aus content/blog/)
-    const blogSlugs = readBlogSlugs();
-
-    // Legal
-    const legalPages = [
-        { url: '/impressum', priority: 0.3, changeFrequency: 'yearly' as const },
-        { url: '/datenschutz', priority: 0.3, changeFrequency: 'yearly' as const },
-        { url: '/agb', priority: 0.3, changeFrequency: 'yearly' as const },
-    ];
-
-    // Alles zusammenfuehren
-    const allPages = [
-        ...mainPages,
-        ...servicePages.map(p => ({ ...p, changeFrequency: 'weekly' as const })),
-        ...cloudTelefonieVariants.map(p => ({ ...p, changeFrequency: 'monthly' as const })),
-        ...kiTelefonassistentPages.map(p => ({ ...p, changeFrequency: 'monthly' as const })),
-        ...webdesignRegions.map(r => ({
-            url: `/webdesign/${r}`,
-            priority: 0.6,
-            changeFrequency: 'monthly' as const,
-        })),
-        ...itSupportRegions.map(r => ({
-            url: `/it-support/${r}`,
-            priority: 0.6,
-            changeFrequency: 'monthly' as const,
-        })),
-        ...cloudTelefonieRegions.map(r => ({
-            url: `/cloud-telefonie/${r}`,
-            priority: 0.6,
-            changeFrequency: 'monthly' as const,
-        })),
-        ...blogSlugs.map(s => ({
-            url: `/blog/${s}`,
-            priority: 0.7,
-            changeFrequency: 'monthly' as const,
-        })),
-        ...legalPages,
-    ];
-
-    return allPages.map(page => ({
-        url: `${BASE_URL}${page.url}`,
-        lastModified: currentDate,
-        changeFrequency: page.changeFrequency,
-        priority: page.priority,
-    }));
+    return alleSeiten().map((seite) => {
+        const datum = seitenDatum(seite.url);
+        if (!datum) console.warn(`sitemap: kein lastmod für ${seite.url || '/'}`);
+        return {
+            url: `${BASE_URL}${seite.url}`,
+            lastModified: datum ? new Date(datum.geaendert) : buildDatum,
+            changeFrequency: seite.changeFrequency,
+            priority: seite.priority,
+        };
+    });
 }

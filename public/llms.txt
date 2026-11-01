@@ -1,57 +1,57 @@
 # InfraOne IT Solutions
-# https://infraone.ch
 
-> InfraOne IT Solutions GmbH ist ein Schweizer IT-Dienstleister mit Hauptsitz in Winterthur.
-> Spezialgebiete: Cloud-Telefonie, Webdesign, Informatik-Support, Digital Signage.
-> Hauptregionen: Winterthur, Zuerich, Thurgau, Schaffhausen.
+> InfraOne IT Solutions GmbH ist ein Schweizer IT-Dienstleister mit Hauptsitz in Winterthur (gegruendet 2015).
+> Spezialgebiete: KI-Telefonassistent fuer Schweizer KMU (versteht und spricht Schweizerdeutsch), Cloud-Telefonie,
+> IT-Support, Webdesign, Digital Signage. Hauptregionen: Winterthur, Zuerich, Thurgau, Schaffhausen.
+> Hosting des KI-Telefonassistenten in der Schweiz (Infomaniak, Satigny); Live-Test ohne Anmeldung auf /ki-telefonassistent.
 
-## Unternehmen
+## KI-Telefonassistent
 
-InfraOne IT Solutions GmbH
-Hauptsitz: Winterthur (Rudolf-Diesel-Strasse 25, 8404 Winterthur)
-Standorte: Winterthur, Schaffhausen, Taegerwilen (Thurgau), Kleinandelfingen
-Gegruendet: 2015
-Mitarbeiter: 5
-Bediente Regionen: Winterthur, Zuerich, Thurgau, Schaffhausen, St. Gallen, Aargau, Zug, Luzern, Basel, Bern, Solothurn, Graubuenden
+Zweck: Der KI-Telefonassistent nimmt Anrufe fuer KMU entgegen, wenn niemand Zeit hat, fuehrt das Gespraech selbst und schickt nach jedem Anruf eine Gespraechsnotiz per E-Mail. Fuer Handwerk, Haustechnik, Praxen, Treuhand, Immobilien, Garagen und andere KMU in der Deutschschweiz.
 
-## Kontakt
+Sprachen: versteht und spricht Schweizerdeutsch (Mundart), Hochdeutsch und Englisch. Ehrlich: Dialekte sind vielfaeltig, seltene Ausdruecke koennen Rueckfragen ausloesen; im Testanruf ist Schweizerdeutsch noch als "in Erprobung" gekennzeichnet.
 
-- Telefon: 052 222 18 18
-- Notfall (bis 23 Uhr): 076 587 50 55
-- E-Mail: info@infraone.ch
-- Website: https://infraone.ch
+Betrieb: Antwortet rund um die Uhr; kennt Oeffnungszeiten und einen eigenen Text fuer ausserhalb. Wissen aus der Website des Kunden (Scan) und aus Angaben des Kunden. Verbotene Themen und Haltung je Kunde einstellbar; mehrere Agenten je Kunde (z. B. ausserhalb der Oeffnungszeiten). Rufnummer behalten (Rufumleitung) oder neue Nummer; Anbindung an die Cloud-Telefonie von InfraOne.
 
-## Spezialgebiete
+Notiz: Erfasst Name, Firma, Anliegen und Rueckrufnummer; Gespraechsnotiz per E-Mail nach jedem Gespraech; auf Wunsch SMS-Bestaetigung an Anrufende. Keine Tonaufnahme der Gespraeche: Transkript und Zusammenfassung.
 
-InfraOne wird gesucht und gefunden als Spezialist fuer:
+Termine und Weiterleitung: Nimmt Terminwuensche auf und meldet sie per E-Mail; Eintrag im Microsoft-365-Kalender: in Entwicklung, kommt bald; Weiterleitung an eine Person; Notfaelle an eine Notfallnummer melden.
 
-1. **Cloud-Telefonie / VoIP**: Peoplefone-Partner, 3CX, Yeastar, Microsoft Teams Integration
-2. **Webdesign**: Wix, WordPress, Next.js mit Keystatic CMS
-3. **Informatik-Support / IT-Support**: KMU und Privatkunden, Remote und Vor-Ort
-4. **Digital Signage**: Werbebildschirme und Infoscreens ohne Abo, eigene Software infraone-signage, lokaler Mini-Server
+Preise (vom Inhaber freigegeben, AUFTRAG-113): monatliche Pakete, exkl. MwSt., monatlich kuendbar: Lite CHF 49 (100 Gespraechsminuten), Starter CHF 149 (500 Gespraechsminuten), Business CHF 299 (1500 Gespraechsminuten), Enterprise auf Anfrage. Einrichtung einmalig CHF 490, jede zusaetzliche Gespraechsminute CHF 0.45. Details auf /ki-telefonassistent/preise.
 
-## Dienstleistungen im Detail
+Demo-Ablauf (Live-Test): Website-Scan und Testanruf ohne Anmeldung und kostenlos; 2 Testanrufe je Geraet und Tag. Voraussetzung: aktiver Eintrag im Schweizer Handelsregister. Ablauf: Website-Scan, dann Pruefung der Firma im Handelsregister (Zefix; bevorzugt ueber die UID im Impressum, sonst ueber den Firmennamen, sonst manuelle Eingabe) mit Bestaetigung "Ja, das ist meine Firma", dann Testanruf. Ohne aktiven Eintrag kein Testanruf; dann persoenliche Vorfuehrung ueber /kontakt.
 
-### IT-Support & Informatik-Support
-Professioneller IT-Support fuer KMU und Privatpersonen.
-- Telefon- & Remote-Support: ab CHF 145.-/h (Mindestverrechnung 15 Min)
-- Vor-Ort Privatkunden: ab CHF 145.-/h (Mindestverrechnung 30 Min)
-- Vor-Ort Firma / KMU: ab CHF 157.-/h (Mindestverrechnung 30 Min)
-- Schulungen / Beratung: CHF 200.-/h
-- Supportzeiten: Mo-Fr 08:00-17:00 regulaer, 17:00-23:00 mit Zuschlag, Wochenende mit Zuschlag
-- Notfall-Support bis 23:00 Uhr verfuegbar
-- Regionale Spokes: /it-support/winterthur, /it-support/zuerich, /it-support/schaffhausen, /it-support/thurgau, /it-support/st-gallen, /it-support/andelfingen
+Technik: Sprach-zu-Sprach-KI (kein Vorlesen aus Textbausteinen); Hosting des Assistenten in der Schweiz (Infomaniak, Satigny); Telefonie ueber Schweizer Provider; Sprachverarbeitung durch KI-Anbieter in bezahlten Stufen ohne Training mit Kundendaten; die Anbieter nennt die Datenschutzerklaerung unter /datenschutz.
 
-### Webdesign
-Moderne, SEO-optimierte Websites fuer Schweizer Unternehmen.
-- Starter-Paket: CHF 990 (bis 5 Seiten, Wix oder WordPress)
-- KMU-Paket: CHF 2'490 (bis 15 Seiten, individuelles Design, Blog)
-- Pro-Paket: ab CHF 4'990 (unbegrenzte Seiten, Next.js + Keystatic CMS, maximale Performance)
-- Technologien: Wix, WordPress, Next.js mit Keystatic CMS
-- Regionale Spokes: /webdesign/winterthur, /webdesign/zuerich, /webdesign/schaffhausen, /webdesign/thurgau, /webdesign/st-gallen, /webdesign/basel, /webdesign/bern, /webdesign/luzern, /webdesign/aargau, /webdesign/zug, /webdesign/solothurn, /webdesign/graubuenden
+AVV: Auftragsverarbeitungsvertrag (AVV) auf Anfrage.
 
-### Cloud-Telefonie & VoIP
-Wartungsfreie Cloud-Telefonanlagen fuer Schweizer KMU.
+- [KI-Telefonassistent: Uebersicht und Live-Test](https://infraone.ch/ki-telefonassistent): Website eingeben, der Assistent ruft an.
+- [KI-Telefonassistent: Funktionen](https://infraone.ch/ki-telefonassistent/funktionen): Alle Funktionen in Gruppen, mit Hoerbeispielen.
+- [KI-Telefonassistent: So funktioniert es](https://infraone.ch/ki-telefonassistent/so-funktioniert-es): Vom Testanruf ueber die Einrichtung zum Betrieb.
+- [KI-Telefonassistent: Schweizerdeutsch](https://infraone.ch/ki-telefonassistent/schweizerdeutsch): Mundart verstehen und sprechen, Grenzen ehrlich erklaert.
+- [KI-Telefonassistent: Preise](https://infraone.ch/ki-telefonassistent/preise): Pakete und Rechner "Was kostet ein verpasster Anruf?".
+- [KI-Telefonassistent: Anwendungen](https://infraone.ch/ki-telefonassistent/anwendungen): Uebersicht der Anwendungen, wofuer Betriebe den Assistenten nutzen.
+- [Anwendung: Erreichbarkeit](https://infraone.ch/ki-telefonassistent/anwendungen/erreichbarkeit): Abnehmen, wenn niemand Zeit hat.
+- [Anwendung: Auskunft](https://infraone.ch/ki-telefonassistent/anwendungen/auskunft): Wiederkehrende Fragen beantworten.
+- [Anwendung: Anliegen erfassen](https://infraone.ch/ki-telefonassistent/anwendungen/anliegen-erfassen): Name, Firma, Anliegen und Rueckruf als Notiz per E-Mail.
+- [Anwendung: Terminbuchung](https://infraone.ch/ki-telefonassistent/anwendungen/terminbuchung): Terminwuensche aufnehmen und per SMS bestaetigen.
+- [Anwendung: Notfall und Pikett](https://infraone.ch/ki-telefonassistent/anwendungen/notfall): Notfaelle an die Notfallnummer melden, Pikett entlasten.
+- [KI-Telefonassistent: Branchen](https://infraone.ch/ki-telefonassistent/branchen): Uebersicht der Branchen, Beispiele aus sechs Branchen.
+- [Branche: Elektriker](https://infraone.ch/ki-telefonassistent/branchen/elektriker): Stoerungen und Auftraege annehmen; typische Anrufe, Beispielgespraech, Integration.
+- [Branche: Sanitaer und Heizung](https://infraone.ch/ki-telefonassistent/branchen/sanitaer-heizung): Pikett, Service und Offerten; typische Anrufe, Beispielgespraech, Integration.
+- [Branche: Arztpraxis](https://infraone.ch/ki-telefonassistent/branchen/arztpraxis): Den Empfang waehrend der Sprechstunde entlasten; typische Anrufe, Beispielgespraech, Integration.
+- [Branche: Treuhand](https://infraone.ch/ki-telefonassistent/branchen/treuhand): Mandanten bedienen, auch in der Steuerzeit; typische Anrufe, Beispielgespraech, Integration.
+- [Branche: Immobilien](https://infraone.ch/ki-telefonassistent/branchen/immobilien): Besichtigungen und Schadenmeldungen; typische Anrufe, Beispielgespraech, Integration.
+- [Branche: Garage](https://infraone.ch/ki-telefonassistent/branchen/garage): Service, Pneuwechsel und Abholung; typische Anrufe, Beispielgespraech, Integration.
+- [KI-Telefonassistent: Sicherheit und Datenschutz](https://infraone.ch/ki-telefonassistent/sicherheit-datenschutz): Hosting, Sprachverarbeitung, keine Aufzeichnung, AVV, DSG.
+- [KI-Telefonassistent: Haeufige Fragen](https://infraone.ch/ki-telefonassistent/faq): Haeufige Fragen zu Mundart, Nummer und Kosten.
+- [KI-Telefonassistent: Vergleich](https://infraone.ch/ki-telefonassistent/vergleich): Gegenueber Anrufbeantworter, Telefonservice, Sekretariat und Sprachmenue (IVR).
+- [KI-Telefonassistent: Glossar](https://infraone.ch/ki-telefonassistent/glossar): Begriffe der KI-Telefonie erklaert.
+
+## Cloud-Telefonie
+
+Wartungsfreie Cloud-Telefonanlagen fuer Schweizer KMU. Partner: Peoplefone (zertifizierter Partner), 3CX, Yeastar; Microsoft Teams Integration moeglich.
+
 - vPBX Basic (1-10 User): CHF 15.-/Monat (1-5 Benutzer), CHF 25.-/Monat (6-10 Benutzer)
 - vPBX Plus (1-150 User, alle Funktionen inkl.): CHF 25.- bis CHF 135.-/Monat je nach Tier, ab 61 Benutzer auf Anfrage
 - Flatrate Schweiz: CHF 19.-/Monat (1000 Min Festnetz + 200 Min Mobil)
@@ -59,106 +59,129 @@ Wartungsfreie Cloud-Telefonanlagen fuer Schweizer KMU.
 - Internet 1 Gbit/s: CHF 49.-/Monat
 - Beispielkonfiguration 20 Benutzer mit vPBX Plus: ab CHF 151.-/Monat inkl. Flatrate
 - Features: Handy-App (iOS/Android), Voicemail, Anrufweiterleitung, Rufgruppen, Warteschlaufe, IVR, Fax2Mail. Mit vPBX Plus zusaetzlich: Softphones, Visual Callflow, Multi-Provisioning, Analytics
-- Partner: Peoplefone (zertifizierter Partner), 3CX, Yeastar
-- Microsoft Teams Integration moeglich
-- Regionale Spokes: /cloud-telefonie/winterthur, /cloud-telefonie/zuerich, /cloud-telefonie/schaffhausen, /cloud-telefonie/thurgau, /cloud-telefonie/st-gallen, /cloud-telefonie/rapperswil
 
-### KI-Telefonassistent fuer Schweizer KMU
-Zweck: Der KI-Telefonassistent nimmt Anrufe fuer KMU entgegen, wenn niemand Zeit hat, fuehrt das Gespraech selbst und schickt nach jedem Anruf eine Gespraechsnotiz per E-Mail. Fuer Handwerk, Haustechnik, Praxen, Treuhand, Immobilien, Garagen und andere KMU in der Deutschschweiz.
-- Sprachen: versteht und spricht Schweizerdeutsch (Mundart), Hochdeutsch und Englisch. Ehrlich: Dialekte sind vielfaeltig, seltene Ausdruecke koennen Rueckfragen ausloesen; im Testanruf ist Schweizerdeutsch noch als "in Erprobung" gekennzeichnet
-- Antwortet rund um die Uhr; kennt Oeffnungszeiten und einen eigenen Text fuer ausserhalb
-- Wissen aus der Website des Kunden (Scan) und aus Angaben des Kunden
-- Erfasst Name, Firma, Anliegen und Rueckrufnummer; Gespraechsnotiz per E-Mail nach jedem Gespraech; auf Wunsch SMS-Bestaetigung an Anrufende
-- Nimmt Terminwuensche auf und meldet sie per E-Mail; Eintrag im Microsoft-365-Kalender: in Entwicklung, kommt bald; Weiterleitung an eine Person; Notfaelle an eine Notfallnummer melden
-- Verbotene Themen und Haltung je Kunde einstellbar; mehrere Agenten je Kunde (z. B. ausserhalb der Oeffnungszeiten)
-- Keine Tonaufnahme der Gespraeche: Transkript und Zusammenfassung
-- Rufnummer behalten (Rufumleitung) oder neue Nummer; Anbindung an die Cloud-Telefonie von InfraOne
-- Technik: Sprach-zu-Sprach-KI (kein Vorlesen aus Textbausteinen); Hosting des Assistenten in der Schweiz (Infomaniak, Satigny); Telefonie ueber Schweizer Provider; Sprachverarbeitung durch KI-Anbieter in bezahlten Stufen ohne Training mit Kundendaten; die Anbieter nennt die Datenschutzerklaerung unter /datenschutz; Auftragsverarbeitungsvertrag (AVV) auf Anfrage
-- Demo (Live-Test): Website-Scan und Testanruf ohne Anmeldung und kostenlos; 2 Testanrufe je Geraet und Tag. Voraussetzung: aktiver Eintrag im Schweizer Handelsregister. Ablauf: Website-Scan, dann Pruefung der Firma im Handelsregister (Zefix; bevorzugt ueber die UID im Impressum, sonst ueber den Firmennamen, sonst manuelle Eingabe) mit Bestaetigung "Ja, das ist meine Firma", dann Testanruf. Ohne aktiven Eintrag kein Testanruf; dann persoenliche Vorfuehrung ueber /kontakt
-- Preise (vom Inhaber freigegeben, AUFTRAG-113): monatliche Pakete, exkl. MwSt., monatlich kuendbar: Lite CHF 49 (100 Gespraechsminuten), Starter CHF 149 (500 Gespraechsminuten), Business CHF 299 (1500 Gespraechsminuten), Enterprise auf Anfrage. Einrichtung einmalig CHF 490, jede zusaetzliche Gespraechsminute CHF 0.45. Details auf /ki-telefonassistent/preise.
-- Seiten:
-  - /ki-telefonassistent - Uebersicht und Live-Test (Website eingeben, der Assistent ruft an)
-  - /ki-telefonassistent/funktionen - alle Funktionen in Gruppen, mit Hoerbeispielen
-  - /ki-telefonassistent/so-funktioniert-es - vom Testanruf ueber die Einrichtung zum Betrieb
-  - /ki-telefonassistent/schweizerdeutsch - Mundart verstehen und sprechen, Grenzen ehrlich erklaert
-  - /ki-telefonassistent/preise - Pakete und Rechner "Was kostet ein verpasster Anruf?"
-  - /ki-telefonassistent/anwendungen - Uebersicht der Anwendungen
-  - /ki-telefonassistent/anwendungen/erreichbarkeit - abnehmen, wenn niemand Zeit hat
-  - /ki-telefonassistent/anwendungen/auskunft - wiederkehrende Fragen beantworten
-  - /ki-telefonassistent/anwendungen/anliegen-erfassen - Name, Firma, Anliegen, Rueckruf als Notiz
-  - /ki-telefonassistent/anwendungen/terminbuchung - Terminwuensche aufnehmen und per SMS bestaetigen
-  - /ki-telefonassistent/anwendungen/notfall - Notfaelle an die Notfallnummer, Pikett entlasten
-  - /ki-telefonassistent/branchen - Uebersicht der Branchen
-  - /ki-telefonassistent/branchen/elektriker, /sanitaer-heizung, /arztpraxis, /treuhand, /immobilien, /garage - typische Anrufe, Beispielgespraech, Integration
-  - /ki-telefonassistent/sicherheit-datenschutz - Hosting, Sprachverarbeitung, keine Aufzeichnung, AVV, DSG
-  - /ki-telefonassistent/faq - haeufige Fragen
-  - /ki-telefonassistent/vergleich - gegenueber Anrufbeantworter, Telefonservice, Sekretariat und Sprachmenue (IVR)
-  - /ki-telefonassistent/glossar - Begriffe der KI-Telefonie
+- [Cloud-Telefonie](https://infraone.ch/cloud-telefonie): Cloud-Telefonanlagen fuer Schweizer KMU mit Peoplefone und 3CX, Kostenrechner und Support aus Winterthur.
+- [Cloud-Telefonie mit 3CX](https://infraone.ch/cloud-telefonie/3cx): 3CX als Unified-Communications-Plattform fuer Schweizer KMU, Beratung und Setup aus Winterthur.
+- [Microsoft Teams als Telefonanlage](https://infraone.ch/cloud-telefonie/ms-teams): Microsoft Teams als vollwertige Telefonanlage fuer Schweizer KMU, z. B. per Direct Routing ueber Peoplefone.
+- [Yeastar Telefonanlage](https://infraone.ch/cloud-telefonie/yeastar): Yeastar als IP-Telefonanlage fuer Schweizer KMU, Spezialitaet Mitel-Migration.
+- [Cloud-Telefonie Winterthur](https://infraone.ch/cloud-telefonie/winterthur): Peoplefone-Cloud-Telefonanlagen fuer Winterthurer KMU, persoenliche Betreuung, keine Anfahrtskosten.
+- [Cloud-Telefonie Zuerich](https://infraone.ch/cloud-telefonie/zuerich): Peoplefone-Cloud-Telefonanlagen fuer Zuercher KMU, Kanzleien und Startups.
+- [Cloud-Telefonie Schaffhausen](https://infraone.ch/cloud-telefonie/schaffhausen): Lokaler Standort, Mitel- und ISDN-Migration, Erfahrung mit Industrie und KMU.
+- [Cloud-Telefonie Thurgau](https://infraone.ch/cloud-telefonie/thurgau): Peoplefone-Cloud-Telefonanlagen fuer Thurgauer Hotellerie und KMU, Standort Taegerwilen.
+- [Cloud-Telefonie St. Gallen](https://infraone.ch/cloud-telefonie/st-gallen): VoIP mit Peoplefone fuer Ostschweizer Startups, Mittelstand und Industrie.
+- [Cloud-Telefonie Rapperswil](https://infraone.ch/cloud-telefonie/rapperswil): Peoplefone-Cloud-Telefonanlagen fuer Rapperswiler KMU und Tourismus, persoenlicher Service.
 
-### Digital Signage
+## IT-Support
+
+Professioneller IT-Support fuer KMU und Privatpersonen, Remote und Vor-Ort.
+
+- Telefon- & Remote-Support: ab CHF 145.-/h (Mindestverrechnung 15 Min)
+- Vor-Ort Privatkunden: ab CHF 145.-/h (Mindestverrechnung 30 Min)
+- Vor-Ort Firma / KMU: ab CHF 157.-/h (Mindestverrechnung 30 Min)
+- Schulungen / Beratung: CHF 200.-/h
+- Supportzeiten: Mo-Fr 08:00-17:00 regulaer, 17:00-23:00 mit Zuschlag, Wochenende mit Zuschlag
+- Notfall-Support bis 23:00 Uhr verfuegbar
+
+- [IT-Support](https://infraone.ch/it-support): IT-Support fuer KMU und Private, alle Preise offen, Kosten online berechnen.
+- [IT-Support Winterthur](https://infraone.ch/it-support/winterthur): Vor-Ort- und Remote-Support, Anfahrt frei.
+- [IT-Support Zuerich](https://infraone.ch/it-support/zuerich): Schnelle IT-Hilfe fuer Zuercher Kanzleien, Beratungen und KMU, alle Preise offen.
+- [IT-Support Schaffhausen](https://infraone.ch/it-support/schaffhausen): Standort Solenbergstrasse, schnelle Vor-Ort-Hilfe, Remote-Support innert Minuten.
+- [IT-Support Thurgau](https://infraone.ch/it-support/thurgau): IT-Betreuung fuer Thurgauer KMU ab Taegerwilen, remote sofort, alle Preise offen.
+- [IT-Support St. Gallen](https://infraone.ch/it-support/st-gallen): Schnelle Hilfe fuer Ostschweizer KMU, Remote-Support innert Minuten, vor Ort am selben Tag.
+- [IT-Support Andelfingen](https://infraone.ch/it-support/andelfingen): Lokaler Standort Kleinandelfingen, im Zuercher Weinland schnell vor Ort.
+
+## Webdesign
+
+Moderne, SEO-optimierte Websites fuer Schweizer Unternehmen. Technologien: Wix, WordPress, Next.js mit Keystatic CMS.
+
+- Starter-Paket: CHF 990 (bis 5 Seiten, Wix oder WordPress)
+- KMU-Paket: CHF 2'490 (bis 15 Seiten, individuelles Design, Blog)
+- Pro-Paket: ab CHF 4'990 (unbegrenzte Seiten, Next.js + Keystatic CMS, maximale Performance)
+
+- [Webdesign](https://infraone.ch/webdesign): Websites fuer KMU ab CHF 990 mit offenen Preisen: Wix, WordPress oder Next.js aus Winterthur.
+- [Webdesign Winterthur](https://infraone.ch/webdesign/winterthur): Lokaler Partner fuer moderne Websites, persoenliche Beratung, ab CHF 990.
+- [Webdesign Zuerich](https://infraone.ch/webdesign/zuerich): Professionelle Websites fuer Zuercher Kanzleien, Beratungen und KMU, ab CHF 990.
+- [Webdesign Schaffhausen](https://infraone.ch/webdesign/schaffhausen): Lokaler Partner fuer Schaffhauser Industrie, Weingueter und Gewerbe, ab CHF 990.
+- [Webdesign Thurgau](https://infraone.ch/webdesign/thurgau): Websites fuer Thurgauer Hotellerie, Obstbau und Handwerk, mit Headless CMS.
+- [Webdesign St. Gallen](https://infraone.ch/webdesign/st-gallen): Websites fuer St. Galler KMU und die Ostschweiz, mit Headless CMS.
+- [Webdesign Basel](https://infraone.ch/webdesign/basel): Websites fuer Basler Pharma-Zulieferer, Kreativ und KMU, mit Headless CMS.
+- [Webdesign Bern](https://infraone.ch/webdesign/bern): Websites fuer Berner Verbaende, KMU und Tourismus, mit Headless CMS.
+- [Webdesign Luzern](https://infraone.ch/webdesign/luzern): Websites fuer die Zentralschweiz: Luzerner Hotels, Tourismus und KMU, ab CHF 990.
+- [Webdesign Aargau](https://infraone.ch/webdesign/aargau): Websites fuer Aargauer Industrie, Cleantech und KMU, ab CHF 990.
+- [Webdesign Zug](https://infraone.ch/webdesign/zug): Premium-Websites mit Headless CMS fuer Zuger Konzerne, FinTech und Crypto Valley.
+- [Webdesign Solothurn](https://infraone.ch/webdesign/solothurn): Websites fuer Solothurner Uhrenindustrie, Mechanik und KMU, ab CHF 990.
+- [Webdesign Graubuenden](https://infraone.ch/webdesign/graubuenden): Websites fuer Buendner Hotels, Bergbahnen und Tourismus, ab CHF 990.
+
+## Digital Signage
+
 Werbebildschirme und Infoscreens ohne monatliche Abo-Kosten.
+
 - Starter-Paket: CHF 1'590 einmalig (1 Display + Mini-Server, bis 5 Displays erweiterbar)
 - Multi-Display-Loesung und Enterprise auf Anfrage
 - CMS: infraone-signage (eigene Entwicklung, lokaler Mini-Server, keine Cloud-Abhaengigkeit)
 - Live-Daten-Integration: PV-Anlagen, Kalender, KPIs, Wetterdaten, SBB-Verbindungen
 - Schweizweite Installation
-- Hub-Seite: /digital-signage
 
-### Weitere Leistungen
-- IT-Netzwerke: Planung, Installation, Wartung (Cisco, Ubiquiti, Fortinet) - /it-netzwerke
-- IT-Sicherheit: Firewall (Fortinet), Endpoint-Schutz (Sophos), Backup (Veeam/Synology), Patch-Management, Sensibilisierung - /it-sicherheit
-- Microsoft 365: Migration, Lizenzberatung, Teams/SharePoint/OneDrive, M365-Backup (Veeam), Betrieb - /microsoft-365
-- WLAN: Ausleuchtung und Installation von Firmen-WLAN (Ubiquiti UniFi, TP-Link Omada), Gaeste-WLAN, Ueberwachung - /wlan
-- Videoueberwachung: IP-Kameras (Hikvision, Axis, Dahua), NVR-Systeme - /videoueberwachung
-- KI & Software-Entwicklung: KI-Integration, Automatisierung, Software auf Mass - /software-entwicklung
+- [Digital Signage](https://infraone.ch/digital-signage): Werbebildschirme und Infoscreens mit eigener Software infraone-signage, ohne Abo-Kosten.
 
-## Partner
+## Weitere Leistungen
 
-Microsoft, Peoplefone, 3CX, Yeastar, Sophos, Fortinet, Lenovo, HPE, VMware, Veeam, Cisco, Ubiquiti, Synology, Milestone, Axis, Hikvision, Wago
+- [Leistungen im Ueberblick](https://infraone.ch/leistungen): Alle IT-Leistungen von InfraOne fuer KMU auf einer Seite.
+- [IT-Netzwerke](https://infraone.ch/it-netzwerke): Planung, Installation und Wartung von Netzwerken (Cisco, Ubiquiti, Fortinet).
+- [IT-Sicherheit](https://infraone.ch/it-sicherheit): Firewall (Fortinet), Endpoint-Schutz (Sophos), Backup (Veeam/Synology), Patch-Management, Sensibilisierung.
+- [Microsoft 365](https://infraone.ch/microsoft-365): Migration, Lizenzberatung, Teams/SharePoint/OneDrive, M365-Backup (Veeam) und Betrieb.
+- [WLAN](https://infraone.ch/wlan): Ausleuchtung und Installation von Firmen-WLAN (Ubiquiti UniFi, TP-Link Omada), Gaeste-WLAN, Ueberwachung.
+- [Videoueberwachung](https://infraone.ch/videoueberwachung): IP-Kameras (Hikvision, Axis, Dahua) und NVR-Systeme.
+- [KI & Software-Entwicklung](https://infraone.ch/software-entwicklung): KI-Integration, Automatisierung und Software auf Mass.
 
-## Referenzen (Auswahl)
+## Unternehmen
 
-- Schaltkraft AG, Elektroinstallationen und Gebaeudetechnik: https://www.schaltkraft.ch
-- Elektro-Tel AG, Elektro und Telekommunikation: https://www.elektro-tel.ch
-- Hoeppli Architektur GmbH, Architektur und Planung Winterthur: https://winterthur-architekten.netlify.app
-
+InfraOne IT Solutions GmbH
+Hauptsitz: Winterthur (Rudolf-Diesel-Strasse 25, 8404 Winterthur)
+Standorte: Winterthur, Schaffhausen, Taegerwilen (Thurgau), Kleinandelfingen
+Gegruendet: 2015
+Bediente Regionen: Winterthur, Zuerich, Thurgau, Schaffhausen, St. Gallen, Aargau, Zug, Luzern, Basel, Bern, Solothurn, Graubuenden
 Rund 100 betreute KMU-Kunden in der Deutschschweiz.
 
-## Blog (IT-Wissen, Praxistipps)
+Kontakt: Telefon 052 222 18 18; Notfall (bis 23 Uhr) 076 587 50 55; E-Mail info@infraone.ch.
 
-- IT trifft OT: Unterschied IT und OT Systeme - /blog/it-trifft-ot
-- Multimonitor-Systeme mit Black Box Emerald (KVM-over-IP) - /blog/multimonitor-systeme-black-box-emerald
-- Moderne Telefonie mit Peoplefone und 3CX - /blog/moderne-telefonie-peoplefone-3cx
-- PRTG Netzwerkmonitoring fuer KMU - /blog/prtg-netzwerkmonitoring
-- WAGO SPS auf Codesys 3.5 migrieren - /blog/wago-codesys-migration
-- Windows 11 Admin-Passwort zuruecksetzen - /blog/windows-11-admin-passwort-zuruecksetzen
+Partner: Microsoft, Peoplefone, 3CX, Yeastar, Sophos, Fortinet, Lenovo, HPE, VMware, Veeam, Cisco, Ubiquiti, Synology, Milestone, Axis, Hikvision, Wago
 
-## USPs (Unique Selling Points)
-
+USPs:
 1. Schweizer KMU-Spezialist mit physischen Standorten in Winterthur, Schaffhausen, Taegerwilen, Kleinandelfingen
 2. Schnelle Reaktion: Remote-Support oft innert 15 Minuten
 3. Transparente Preise: Keine versteckten Kosten, Abrechnung im 15-Minuten-Takt
 4. Schweizer Hosting: der KI-Telefonassistent laeuft bei Infomaniak in Satigny, die Telefonie ueber Schweizer Provider; Sprachverarbeitung durch KI-Anbieter in bezahlten Stufen ohne Training mit Kundendaten; die Anbieter nennt die Datenschutzerklaerung unter /datenschutz
 5. KI-Telefonassistent mit Mundart: versteht und spricht Schweizerdeutsch, Live-Demo ohne Anmeldung (Website-Scan und Testanruf)
 
-## Wichtige URLs
+- [Startseite](https://infraone.ch/): IT-Support, Webdesign, Cloud-Telefonie und KI-Telefonassistent fuer KMU aus Winterthur.
+- [Ueber uns](https://infraone.ch/unternehmen): Team, Geschichte und Philosophie von InfraOne in Winterthur.
+- [Kontakt](https://infraone.ch/kontakt): Vier Standorte (Winterthur, Schaffhausen, Taegerwilen, Kleinandelfingen), Telefon 052 222 18 18.
+- [Partner](https://infraone.ch/partner): Elektrofachbetriebe fuer gemeinsame Projekte und die Hersteller, deren Technik wir einsetzen.
+- [Referenz: Schaltkraft AG](https://www.schaltkraft.ch): Elektroinstallationen und Gebaeudetechnik.
+- [Referenz: Elektro-Tel AG](https://www.elektro-tel.ch): Elektro und Telekommunikation.
+- [Referenz: Hoeppli Architektur GmbH](https://winterthur-architekten.netlify.app): Architektur und Planung Winterthur.
 
-- Homepage: https://infraone.ch
-- Kontakt: https://infraone.ch/kontakt
-- Unternehmen: https://infraone.ch/unternehmen
-- Leistungen-Uebersicht: https://infraone.ch/leistungen
-- Blog: https://infraone.ch/blog
-- IT-Support: https://infraone.ch/it-support
-- Webdesign: https://infraone.ch/webdesign
-- Cloud-Telefonie: https://infraone.ch/cloud-telefonie
-- KI-Telefonassistent (Demo-Anruf): https://infraone.ch/ki-telefonassistent
-- KI-Telefonassistent Funktionen: https://infraone.ch/ki-telefonassistent/funktionen
-- KI-Telefonassistent FAQ: https://infraone.ch/ki-telefonassistent/faq
-- Digital Signage: https://infraone.ch/digital-signage
-- IT-Netzwerke: https://infraone.ch/it-netzwerke
-- IT-Sicherheit: https://infraone.ch/it-sicherheit
-- Microsoft 365: https://infraone.ch/microsoft-365
-- WLAN: https://infraone.ch/wlan
-- Videoueberwachung: https://infraone.ch/videoueberwachung
-- KI & Software-Entwicklung: https://infraone.ch/software-entwicklung
-- Sitemap: https://infraone.ch/sitemap.xml
+## Blog
+
+- [Blog](https://infraone.ch/blog): Artikel zu IT-Themen und Praxistipps fuer KMU.
+- [IT trifft OT: Unterschied IT und OT Systeme](https://infraone.ch/blog/it-trifft-ot): Was IT und OT unterscheidet, warum sie vernetzt werden und welche Sicherheitsrisiken entstehen.
+- [Multimonitor-Systeme mit Black Box Emerald (KVM-over-IP)](https://infraone.ch/blog/multimonitor-systeme-black-box-emerald): Zentrale Steuerung mehrerer Rechner in Kontrollraeumen und Leitstaenden, lokal und aus der Ferne.
+- [Moderne Telefonie mit Peoplefone und 3CX](https://infraone.ch/blog/moderne-telefonie-peoplefone-3cx): Schritt fuer Schritt zur modernen VoIP-Telefonanlage mit 3CX und Peoplefone.
+- [PRTG Netzwerkmonitoring fuer KMU](https://infraone.ch/blog/prtg-netzwerkmonitoring): Das IT-Netzwerk mit PRTG ueberwachen, Stoerungen fruehzeitig erkennen und Ausfaelle vermeiden.
+- [WAGO SPS auf Codesys 3.5 migrieren](https://infraone.ch/blog/wago-codesys-migration): WAGO-SPS-Projekte sauber und nachvollziehbar auf CODESYS 3.5 migrieren.
+- [Windows 11 Admin-Passwort zuruecksetzen](https://infraone.ch/blog/windows-11-admin-passwort-zuruecksetzen): Leitfaden fuer ausgesperrte Windows-11-Nutzer, inklusive Umgang mit BitLocker-Verschluesselung.
+- [Cloud-Telefonanlage vs. On-Premise](https://infraone.ch/blog/cloud-telefonanlage-vs-on-premise): Kostenvergleich, Vor- und Nachteile und Migration aus alten Anlagen fuer Schweizer KMU.
+- [Was kostet IT-Support fuer KMU in der Schweiz?](https://infraone.ch/blog/it-support-kosten-schweiz): Tarife und Modelle, wie sich die Preise zusammensetzen und worauf KMU bei der Auswahl achten.
+- [Microsoft 365 Migration fuer KMU](https://infraone.ch/blog/microsoft-365-migration-kmu): Schritte der Planung, haeufige Pitfalls und warum Backup nach der Migration Pflicht bleibt.
+- [Webdesign Kosten Schweiz](https://infraone.ch/blog/webdesign-kosten-schweiz): Was eine Firmenwebsite kostet, was den Preis treibt und wie Sie versteckte Kosten erkennen.
+
+## Optional
+
+- [Impressum](https://infraone.ch/impressum): Impressum und rechtliche Informationen der InfraOne IT Solutions GmbH.
+- [Datenschutz](https://infraone.ch/datenschutz): Was mit Daten auf infraone.ch und beim KI-Telefonassistenten passiert, mit der Liste der Dienstleister.
+- [AGB](https://infraone.ch/agb): Allgemeine Geschaeftsbedingungen der InfraOne IT Solutions GmbH.
+- [Sitemap](https://infraone.ch/sitemap.xml): Alle Seiten mit Aenderungsdatum.
+- [llms-full.txt](https://infraone.ch/llms-full.txt): Ausfuehrliche Fassung dieser Datei.
+
+Aktualisiert: 2026-11-01

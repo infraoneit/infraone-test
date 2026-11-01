@@ -1,0 +1,318 @@
+{
+  "erzeugt": "2026-11-01T11:46:45.851Z",
+  "quelle": "git",
+  "seiten": {
+    "/": {
+      "geaendert": "2026-10-31T16:12:39+01:00",
+      "erstellt": "2026-01-21T11:18:10+01:00"
+    },
+    "/leistungen": {
+      "geaendert": "2026-08-17T19:28:35+02:00",
+      "erstellt": "2026-01-21T11:18:10+01:00"
+    },
+    "/kontakt": {
+      "geaendert": "2026-08-07T14:19:34+02:00",
+      "erstellt": "2026-01-21T11:18:10+01:00"
+    },
+    "/unternehmen": {
+      "geaendert": "2026-08-11T10:46:57+02:00",
+      "erstellt": "2026-01-21T11:18:10+01:00"
+    },
+    "/partner": {
+      "geaendert": "2026-08-11T10:46:57+02:00",
+      "erstellt": "2026-08-04T16:16:43+02:00"
+    },
+    "/blog": {
+      "geaendert": "2026-08-04T15:32:57+02:00",
+      "erstellt": "2026-01-21T11:18:10+01:00"
+    },
+    "/it-support": {
+      "geaendert": "2026-10-22T12:15:47+02:00",
+      "erstellt": "2026-01-22T15:53:42+01:00"
+    },
+    "/webdesign": {
+      "geaendert": "2026-08-09T16:54:24+02:00",
+      "erstellt": "2026-01-21T11:18:10+01:00"
+    },
+    "/cloud-telefonie": {
+      "geaendert": "2026-10-25T14:19:37+01:00",
+      "erstellt": "2026-01-21T11:18:10+01:00"
+    },
+    "/ki-telefonassistent": {
+      "geaendert": "2026-10-31T16:12:39+01:00",
+      "erstellt": "2026-10-22T18:26:35+02:00"
+    },
+    "/digital-signage": {
+      "geaendert": "2026-10-25T18:46:22+01:00",
+      "erstellt": "2026-01-21T11:18:10+01:00"
+    },
+    "/it-netzwerke": {
+      "geaendert": "2026-08-04T15:32:57+02:00",
+      "erstellt": "2026-01-21T11:18:10+01:00"
+    },
+    "/it-sicherheit": {
+      "geaendert": "2026-08-17T19:28:35+02:00",
+      "erstellt": "2026-08-17T19:28:35+02:00"
+    },
+    "/microsoft-365": {
+      "geaendert": "2026-08-17T19:28:35+02:00",
+      "erstellt": "2026-08-17T19:28:35+02:00"
+    },
+    "/wlan": {
+      "geaendert": "2026-08-17T19:28:35+02:00",
+      "erstellt": "2026-08-17T19:28:35+02:00"
+    },
+    "/videoueberwachung": {
+      "geaendert": "2026-08-04T15:32:57+02:00",
+      "erstellt": "2026-01-21T11:18:10+01:00"
+    },
+    "/software-entwicklung": {
+      "geaendert": "2026-08-07T14:19:34+02:00",
+      "erstellt": "2026-01-21T11:18:10+01:00"
+    },
+    "/cloud-telefonie/3cx": {
+      "geaendert": "2026-10-25T18:46:22+01:00",
+      "erstellt": "2026-07-06T21:45:01+02:00"
+    },
+    "/cloud-telefonie/ms-teams": {
+      "geaendert": "2026-08-07T14:19:34+02:00",
+      "erstellt": "2026-07-06T21:45:01+02:00"
+    },
+    "/cloud-telefonie/yeastar": {
+      "geaendert": "2026-08-07T14:19:34+02:00",
+      "erstellt": "2026-07-06T21:45:01+02:00"
+    },
+    "/ki-telefonassistent/funktionen": {
+      "geaendert": "2026-10-31T16:12:39+01:00",
+      "erstellt": "2026-10-30T02:18:36+01:00"
+    },
+    "/ki-telefonassistent/so-funktioniert-es": {
+      "geaendert": "2026-10-31T16:12:39+01:00",
+      "erstellt": "2026-10-30T02:18:36+01:00"
+    },
+    "/ki-telefonassistent/schweizerdeutsch": {
+      "geaendert": "2026-10-30T02:18:36+01:00",
+      "erstellt": "2026-10-30T02:18:36+01:00"
+    },
+    "/ki-telefonassistent/preise": {
+      "geaendert": "2026-10-31T16:12:39+01:00",
+      "erstellt": "2026-10-30T02:18:36+01:00"
+    },
+    "/ki-telefonassistent/anwendungen": {
+      "geaendert": "2026-10-31T16:12:39+01:00",
+      "erstellt": "2026-10-30T02:18:36+01:00"
+    },
+    "/ki-telefonassistent/anwendungen/erreichbarkeit": {
+      "geaendert": "2026-10-31T16:12:39+01:00",
+      "erstellt": "2026-10-30T02:18:36+01:00"
+    },
+    "/ki-telefonassistent/anwendungen/auskunft": {
+      "geaendert": "2026-10-31T16:12:39+01:00",
+      "erstellt": "2026-10-30T02:18:36+01:00"
+    },
+    "/ki-telefonassistent/anwendungen/anliegen-erfassen": {
+      "geaendert": "2026-10-31T16:12:39+01:00",
+      "erstellt": "2026-10-30T02:18:36+01:00"
+    },
+    "/ki-telefonassistent/anwendungen/terminbuchung": {
+      "geaendert": "2026-10-31T16:12:39+01:00",
+      "erstellt": "2026-10-30T02:18:36+01:00"
+    },
+    "/ki-telefonassistent/anwendungen/notfall": {
+      "geaendert": "2026-10-31T16:12:39+01:00",
+      "erstellt": "2026-10-30T02:18:36+01:00"
+    },
+    "/ki-telefonassistent/branchen": {
+      "geaendert": "2026-10-30T02:18:36+01:00",
+      "erstellt": "2026-10-30T02:18:36+01:00"
+    },
+    "/ki-telefonassistent/branchen/elektriker": {
+      "geaendert": "2026-10-31T16:12:39+01:00",
+      "erstellt": "2026-10-30T02:18:36+01:00"
+    },
+    "/ki-telefonassistent/branchen/sanitaer-heizung": {
+      "geaendert": "2026-10-31T16:12:39+01:00",
+      "erstellt": "2026-10-30T02:18:36+01:00"
+    },
+    "/ki-telefonassistent/branchen/arztpraxis": {
+      "geaendert": "2026-10-31T16:12:39+01:00",
+      "erstellt": "2026-10-30T02:18:36+01:00"
+    },
+    "/ki-telefonassistent/branchen/treuhand": {
+      "geaendert": "2026-10-31T16:12:39+01:00",
+      "erstellt": "2026-10-30T02:18:36+01:00"
+    },
+    "/ki-telefonassistent/branchen/immobilien": {
+      "geaendert": "2026-10-31T16:12:39+01:00",
+      "erstellt": "2026-10-30T02:18:36+01:00"
+    },
+    "/ki-telefonassistent/branchen/garage": {
+      "geaendert": "2026-10-31T16:12:39+01:00",
+      "erstellt": "2026-10-30T02:18:36+01:00"
+    },
+    "/ki-telefonassistent/sicherheit-datenschutz": {
+      "geaendert": "2026-10-31T16:12:39+01:00",
+      "erstellt": "2026-10-30T02:18:36+01:00"
+    },
+    "/ki-telefonassistent/faq": {
+      "geaendert": "2026-10-31T16:12:39+01:00",
+      "erstellt": "2026-10-30T02:18:36+01:00"
+    },
+    "/ki-telefonassistent/vergleich": {
+      "geaendert": "2026-10-30T13:31:49+01:00",
+      "erstellt": "2026-10-30T02:18:36+01:00"
+    },
+    "/ki-telefonassistent/glossar": {
+      "geaendert": "2026-10-30T02:18:36+01:00",
+      "erstellt": "2026-10-30T02:18:36+01:00"
+    },
+    "/webdesign/aargau": {
+      "geaendert": "2026-08-11T12:15:50+02:00",
+      "erstellt": "2026-05-05T21:49:59+02:00"
+    },
+    "/webdesign/basel": {
+      "geaendert": "2026-08-11T12:15:50+02:00",
+      "erstellt": "2026-05-05T21:49:59+02:00"
+    },
+    "/webdesign/bern": {
+      "geaendert": "2026-08-11T12:15:50+02:00",
+      "erstellt": "2026-05-05T21:49:59+02:00"
+    },
+    "/webdesign/graubuenden": {
+      "geaendert": "2026-08-11T12:15:50+02:00",
+      "erstellt": "2026-05-05T21:49:59+02:00"
+    },
+    "/webdesign/luzern": {
+      "geaendert": "2026-08-04T15:32:57+02:00",
+      "erstellt": "2026-05-05T21:49:59+02:00"
+    },
+    "/webdesign/schaffhausen": {
+      "geaendert": "2026-08-11T12:15:50+02:00",
+      "erstellt": "2026-05-05T21:49:59+02:00"
+    },
+    "/webdesign/solothurn": {
+      "geaendert": "2026-08-11T12:15:50+02:00",
+      "erstellt": "2026-05-05T21:49:59+02:00"
+    },
+    "/webdesign/st-gallen": {
+      "geaendert": "2026-08-11T12:15:50+02:00",
+      "erstellt": "2026-05-05T21:49:59+02:00"
+    },
+    "/webdesign/thurgau": {
+      "geaendert": "2026-08-11T12:15:50+02:00",
+      "erstellt": "2026-05-05T21:49:59+02:00"
+    },
+    "/webdesign/winterthur": {
+      "geaendert": "2026-08-04T15:32:57+02:00",
+      "erstellt": "2026-05-05T21:49:59+02:00"
+    },
+    "/webdesign/zuerich": {
+      "geaendert": "2026-08-11T12:15:50+02:00",
+      "erstellt": "2026-05-05T21:49:59+02:00"
+    },
+    "/webdesign/zug": {
+      "geaendert": "2026-08-11T12:15:50+02:00",
+      "erstellt": "2026-05-05T21:49:59+02:00"
+    },
+    "/it-support/andelfingen": {
+      "geaendert": "2026-10-08T16:54:28+02:00",
+      "erstellt": "2026-01-23T15:44:58+01:00"
+    },
+    "/it-support/schaffhausen": {
+      "geaendert": "2026-10-08T16:54:28+02:00",
+      "erstellt": "2026-01-23T15:44:58+01:00"
+    },
+    "/it-support/st-gallen": {
+      "geaendert": "2026-10-08T16:54:28+02:00",
+      "erstellt": "2026-01-23T15:44:58+01:00"
+    },
+    "/it-support/thurgau": {
+      "geaendert": "2026-10-08T16:54:28+02:00",
+      "erstellt": "2026-01-23T15:44:58+01:00"
+    },
+    "/it-support/winterthur": {
+      "geaendert": "2026-10-08T16:54:28+02:00",
+      "erstellt": "2026-01-22T21:33:17+01:00"
+    },
+    "/it-support/zuerich": {
+      "geaendert": "2026-10-08T16:54:28+02:00",
+      "erstellt": "2026-01-23T15:44:58+01:00"
+    },
+    "/cloud-telefonie/rapperswil": {
+      "geaendert": "2026-08-11T12:15:50+02:00",
+      "erstellt": "2026-05-14T07:29:12+02:00"
+    },
+    "/cloud-telefonie/schaffhausen": {
+      "geaendert": "2026-08-11T12:15:50+02:00",
+      "erstellt": "2026-05-14T07:29:12+02:00"
+    },
+    "/cloud-telefonie/st-gallen": {
+      "geaendert": "2026-08-11T12:15:50+02:00",
+      "erstellt": "2026-05-14T07:29:12+02:00"
+    },
+    "/cloud-telefonie/thurgau": {
+      "geaendert": "2026-08-11T12:15:50+02:00",
+      "erstellt": "2026-05-14T07:29:12+02:00"
+    },
+    "/cloud-telefonie/winterthur": {
+      "geaendert": "2026-08-11T12:15:50+02:00",
+      "erstellt": "2026-05-14T07:29:12+02:00"
+    },
+    "/cloud-telefonie/zuerich": {
+      "geaendert": "2026-08-11T12:15:50+02:00",
+      "erstellt": "2026-05-14T07:29:12+02:00"
+    },
+    "/blog/cloud-telefonanlage-vs-on-premise": {
+      "geaendert": "2026-08-04T15:44:32+02:00",
+      "erstellt": "2026-05-05"
+    },
+    "/blog/it-support-kosten-schweiz": {
+      "geaendert": "2026-10-08T16:54:28+02:00",
+      "erstellt": "2026-05-05"
+    },
+    "/blog/it-trifft-ot": {
+      "geaendert": "2026-08-11T10:59:15+02:00",
+      "erstellt": "2025-01-15"
+    },
+    "/blog/microsoft-365-migration-kmu": {
+      "geaendert": "2026-08-04T15:44:32+02:00",
+      "erstellt": "2026-05-05"
+    },
+    "/blog/moderne-telefonie-peoplefone-3cx": {
+      "geaendert": "2026-08-11T10:59:15+02:00",
+      "erstellt": "2025-01-05"
+    },
+    "/blog/multimonitor-systeme-black-box-emerald": {
+      "geaendert": "2026-08-11T10:59:15+02:00",
+      "erstellt": "2025-01-10"
+    },
+    "/blog/prtg-netzwerkmonitoring": {
+      "geaendert": "2026-08-11T10:59:15+02:00",
+      "erstellt": "2024-12-20"
+    },
+    "/blog/wago-codesys-migration": {
+      "geaendert": "2026-08-11T10:59:15+02:00",
+      "erstellt": "2024-12-10"
+    },
+    "/blog/webdesign-kosten-schweiz": {
+      "geaendert": "2026-08-04T15:44:32+02:00",
+      "erstellt": "2026-05-05"
+    },
+    "/blog/windows-11-admin-passwort-zuruecksetzen": {
+      "geaendert": "2026-08-11T10:59:15+02:00",
+      "erstellt": "2026-01-22"
+    },
+    "/impressum": {
+      "geaendert": "2026-05-05T12:31:38+02:00",
+      "erstellt": "2026-01-21T11:18:10+01:00"
+    },
+    "/datenschutz": {
+      "geaendert": "2026-10-31T16:12:39+01:00",
+      "erstellt": "2026-01-21T11:18:10+01:00"
+    },
+    "/agb": {
+      "geaendert": "2026-10-08T16:54:28+02:00",
+      "erstellt": "2026-01-21T11:18:10+01:00"
+    }
+  }
+}

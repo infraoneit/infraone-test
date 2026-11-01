@@ -21,6 +21,7 @@ export const metadata: Metadata = {
         canonical: `${BASE_URL}/cloud-telefonie/ms-teams`,
         languages: {
             'de-CH': `${BASE_URL}/cloud-telefonie/ms-teams`,
+            'x-default': `${BASE_URL}/cloud-telefonie/ms-teams`, // [01.11.2026] AUFTRAG-116: hreflang x-default
         },
     },
 };

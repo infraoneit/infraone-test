@@ -51,7 +51,9 @@ export default function PreiseSeite() {
             {/* Service mit Angebotskatalog erst nach Freigabe (siehe schema.ts) */}
             <JsonLd daten={[...kiSeitenSchemas(KI_PREISE_PFAD, 'Preise des KI-Telefonassistenten', BESCHREIBUNG, krumen), PREISE_FREIGEGEBEN ? generateKiTelefonassistentServiceSchema(BESCHREIBUNG) : null]} />
 
+            {/* [01.11.2026] AUFTRAG-116: pfad für «Aktualisiert am …» in der Brotkrumen-Zeile */}
             <SeitenKopf
+                pfad={KI_PREISE_PFAD}
                 krumen={krumen}
                 eyebrow="Preise"
                 titel="Preise für den KI-Telefonassistenten"

@@ -17,3 +17,8 @@
     ".next/required-server-files.json",
     "package.json"
   ]
+
+# [01.11.2026] AUFTRAG-116: IndexNow-Ping nach erfolgreichem Produktions-Deploy (netlify/functions/deploy-succeeded.mts).
+# Eigene leere included_files, damit die globalen Next-Artefakte diese Mini-Funktion nicht aufblaehen.
+[functions."deploy-succeeded"]
+  included_files = []
