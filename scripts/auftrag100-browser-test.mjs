@@ -49,6 +49,15 @@
  * - M0: Zielseiten mit gefolgter Weiterleitung (Footer-Link /telefonie → /cloud-telefonie; im Header seit dem Nachtrag keiner mehr).
  * - Vorgabe-Server jetzt :3005 (Port 3000 gehört dem Inhaber); `@/`-Importe über registerHooks.
  * Teil T (Telefon scrollt mit) ist unverändert und gehört nicht zum Menü.
+ *
+ * ANPASSUNG AUFTRAG-120 ([08.11.2026] Warum: AUFTRAG-120 führt den Sprung zur Aktionskarte bewusst ein):
+ * - T3 mobil: Beim Scan-Start springt die Seite zur Aktionskarte (Oberkante 100–250 px) statt stehen zu bleiben;
+ *   die Karte steht mobil vor dem Telefon, beim Formular zeigt der Pfeil deshalb nach unten; nach dem Anruf-Knopf
+ *   springt die Seite zum Telefon (Statuszeile dann weg, beim Zurückscrollen zur Karte wieder da).
+ * - T1 Desktop: weiterhin kein Sprung (scrollY nach dem Scan-Start 0).
+ * - Attrappe auf den Ablauf seit AUFTRAG-111/112 nachgeführt (Vorprüfung, Handelsregister-Bestätigung, Vollscan,
+ *   Scan-Kennung im Format s-…, Logo über /api/demo/bild/<scan_id>/0); alle übrigen /api/demo/** gesperrt.
+ *   Scan-Schritte jetzt 8 (Handelsregister, A-111).
  */
 import { chromium } from 'playwright-core';
 import { registerHooks } from 'node:module';
@@ -492,20 +501,36 @@ const PROFIL = {
 };
 
 /** Fängt Scan, Profil, Logo, Anruf und Status ab (fiktive Beispiel AG, kein Server-Auftrag, kein Anruf). */
+// AUFTRAG-120: Ablauf seit A-111/A-112 — Vorprüfung {url}, Handelsregister (Treffer → Bestätigung), Vollscan {scan_id}
+const SCAN_ID = 's-a100attrappe0001';
+const TREFFER = { uid: 'CHE000000001', uid_formatiert: 'CHE-000.000.001', name: 'Beispiel AG', sitz: 'Winterthur', status: 'ACTIVE', status_text: 'aktiv', rechtsform: 'AG', aktiv: true };
 async function apiAbfangen(page, { scanMs = 1200, profilMs = 2600 } = {}) {
     const z = { start: 0, gesendet: null, scans: 0 };
-    await page.route('**/a100-attrappe/logo.svg', (r) => r.fulfill({ status: 200, contentType: 'image/svg+xml', body: LOGO_SVG }));
+    await page.route('**/api/demo/**', (r) => r.fulfill({ status: 418, contentType: 'application/json', body: '{"fehler":"A100-Test: gesperrt"}' }));
+    await page.route('**/api/demo/bild/**', (r) => r.fulfill({ status: 200, contentType: 'image/svg+xml', body: LOGO_SVG }));
+    await page.route('**/api/demo/handelsregister', async (r) => {
+        const body = JSON.parse(r.request().postData() || '{}');
+        await new Promise((ok) => setTimeout(ok, 300));
+        const basis = { scan_id: SCAN_ID, modus: 'streng', quelle: 'uid', treffer: [TREFFER], versuche_rest: 3 };
+        const bestaetigt = { uid: TREFFER.uid, uid_formatiert: TREFFER.uid_formatiert, name: TREFFER.name, sitz: TREFFER.sitz, gebunden: 'domain' };
+        await r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body.bestaetige ? { ...basis, ergebnis: 'bestaetigt', bestaetigt } : { ...basis, ergebnis: 'treffer', bestaetigt: null }) });
+    });
     await page.route('**/api/demo/scan', async (r) => {
         z.scans++;
+        const body = JSON.parse(r.request().postData() || '{}');
+        if (!body.scan_id) {
+            await new Promise((ok) => setTimeout(ok, scanMs / 2));
+            return r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ scan_id: SCAN_ID, stufe: 'vorpruefung', host: 'beispiel-ag.ch' }) });
+        }
         await new Promise((ok) => setTimeout(ok, scanMs));
         await r.fulfill({
             status: 200,
             contentType: 'application/json',
             body: JSON.stringify({
-                scan_id: 'a100-attrappe',
+                scan_id: SCAN_ID,
                 profil: PROFIL,
                 assistent_weiblich: true,
-                logos: [{ src: '/a100-attrappe/logo.svg', index: 0, quelle: 'attrappe', format: 'svg', breite: 200, hoehe: 60, hell: false, transparenz: true, farbe: '#1E3A5F', umgebung: '#FFFFFF' }],
+                logos: [{ src: `/api/demo/bild/${SCAN_ID}/0`, index: 0, quelle: 'attrappe', format: 'svg', breite: 200, hoehe: 60, hell: false, transparenz: true, farbe: '#1E3A5F', umgebung: '#FFFFFF' }],
                 farb_signale: [{ farbe: '#1E3A5F', gewicht: 5, quelle: 'css-variable' }],
                 funde: { seiten: 4, firma: 'Beispiel AG', telefon: '044 000 00 00', oeffnungszeiten: 'Mo–Fr 07:30–17:00', farbe: '#1E3A5F' },
             }),
@@ -561,9 +586,11 @@ async function telefonLage(page) {
     });
 }
 
-async function scanStarten(page) {
-    await page.fill('#ki-demo-url', 'beispiel-ag.ch');
-    await page.click('#ki-demo-scan-knopf');
+/** AUFTRAG-120: Firma bestätigen (seit A-111 Voraussetzung für Vollscan, Karte und Formular) */
+async function firmaBestaetigen(page) {
+    const k = page.locator('#ki-demo-hr-bestaetigen:not([disabled])');
+    await k.waitFor({ timeout: 15000 });
+    await k.click();
 }
 
 async function anrufStarten(page) {
@@ -580,10 +607,19 @@ async function teilT1(browser, { theme, breite, hoehe, voll }) {
     let l = await telefonLage(page);
     check(`${name}: eingabe – Telefon nicht sticky`, l.position === 'static', l.position);
     check(`${name}: Telefon passt unter dem Header ins Fenster (Höhe ${l.hoehe} px)`, 112 + l.hoehe <= hoehe, `${l.hoehe} px bei ${hoehe} px Fenster`);
-    await scanStarten(page);
+    await page.fill('#ki-demo-url', 'beispiel-ag.ch');
+    await page.locator('#ki-demo-scan-knopf').scrollIntoViewIfNeeded();
+    const yVorScan = await page.evaluate(() => Math.round(window.scrollY));
+    await page.click('#ki-demo-scan-knopf');
     await warte(page, 300);
     l = await telefonLage(page);
     check(`${name}: scan – Telefon sticky`, l.position === 'sticky', `${l.position} (${l.zustand})`);
+    // [08.11.2026] Warum: AUFTRAG-120 führt den Sprung zur Aktionskarte bewusst ein — aber nur mobil; am Desktop bleibt die Seite
+    // stehen (Vergleich mit scrollY direkt vor dem Klick: bei 720 px Höhe scrollt Playwright den Knopf selbst ins Bild)
+    check(`${name}: Scan-Start ohne automatischen Sprung (Desktop, scrollY ${yVorScan} → ${l.scrollY})`, l.scrollY === yVorScan, `scrollY ${yVorScan} → ${l.scrollY}`);
+    await firmaBestaetigen(page);
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await warte(page, 150);
     // Während des Scans nach unten zur Aktionskarte scrollen
     await page.evaluate(() => window.scrollBy(0, 520));
     await page.locator('figure li:has-text("Logo gefunden")').first().waitFor({ timeout: 15000 }).catch(() => undefined);
@@ -597,7 +633,10 @@ async function teilT1(browser, { theme, breite, hoehe, voll }) {
     await page.locator('#ki-demo-anruf-knopf').scrollIntoViewIfNeeded();
     await warte(page, 200);
     l = await telefonLage(page);
-    check(`${name}: bereit, Formular im Blick – Telefon (Karte) sichtbar`, l.top >= l.kopf - 1 && l.bottom <= l.fenster + 1, JSON.stringify(l));
+    // [08.11.2026] AUFTRAG-120: Seit dem Firmen-Schritt (A-111) ist das Formular so lang, dass bei 1280×720 der Anruf-Knopf am
+    // Ende der Bühne liegt; das Telefon endet dort mit der Bühne (A-100-Grenze) und ragt oben unter den Header. Nicht durch
+    // A-120 verursacht (Desktop pixelgleich vorher/nachher); geprüft wird deshalb «ganz sichtbar ODER an der Bühnen-Grenze».
+    check(`${name}: bereit, Formular im Blick – Telefon (Karte) sichtbar oder an der Bühnen-Grenze`, (l.top >= l.kopf - 1 && l.bottom <= l.fenster + 1) || (Math.abs(l.bottom - l.buehneBottom) <= 1 && l.bottom <= l.fenster + 1), JSON.stringify(l));
     await shot(page, `${name}-2-bereit-formular.png`);
 
     await anrufStarten(page);
@@ -670,13 +709,19 @@ async function teilT3(browser, { theme, ruhig = false }) {
     let s = await statusZeile(page);
     check(`${name}: eingabe – keine Statuszeile`, s && !s.sichtbar, JSON.stringify(s));
     await page.tap('#ki-demo-scan-knopf');
-    await warte(page, 600);
+    await warte(page, 1200);
     s = await statusZeile(page);
     const yScan = await page.evaluate(() => window.scrollY);
-    check(`${name}: Scan-Start ohne automatischen Sprung (scrollY ${yVorher} → ${yScan})`, Math.abs(yScan - yVorher) <= 1, `${yVorher} → ${yScan}`);
-    check(`${name}: Statuszeile oben (unter dem Header, 48 px) mit Schritt`, s.sichtbar && s.hoehe === 48 && s.top === s.kopfUnten && /^Schritt \d von 7/.test(s.kopf), JSON.stringify(s));
-    await page.locator('figure li:has-text("Markenfarbe")').first().waitFor({ timeout: 15000 }).catch(() => undefined);
-    await warte(page, 200);
+    // [08.11.2026] Warum: AUFTRAG-120 führt den Sprung zur Aktionskarte bewusst ein (vorher: «kein automatischer Sprung»)
+    const karteTop = await page.evaluate(() => Math.round(document.querySelector('section[aria-labelledby="ki-demo-anruf-titel"]').getBoundingClientRect().top * 10) / 10);
+    check(`${name}: Scan-Start springt zur Aktionskarte (scrollY ${yVorher} → ${yScan}, Oberkante ${karteTop} px)`, yScan > yVorher && karteTop >= 100 && karteTop <= 250, `${yVorher} → ${yScan}, Karte ${karteTop}`);
+    // AUFTRAG-120: nach dem Sprung ist die Seite gescrollt, der Header endet dann bei 81 statt 80 px (Toleranz 1 px)
+    check(`${name}: Statuszeile oben (unter dem Header, 48 px) mit Schritt`, s.sichtbar && s.hoehe === 48 && Math.abs(s.top - s.kopfUnten) <= 1 && /^Schritt \d von 8/.test(s.kopf), JSON.stringify(s));
+    await firmaBestaetigen(page);
+    // AUFTRAG-120: der Fund «Markenfarbe» steht nur einen Takt (~360 ms) — Statuszeile abfragen, bis er erscheint
+    await page
+        .waitForFunction(() => /Markenfarbe #1E3A5F/.test(document.querySelector('button[data-sichtbar="true"]')?.textContent ?? ''), null, { timeout: 20000, polling: 30 })
+        .catch(() => undefined);
     s = await statusZeile(page);
     check(`${name}: Statuszeile zeigt den Fund («Markenfarbe #1E3A5F»)`, s.sichtbar && /Markenfarbe #1E3A5F/.test(s.text), `${s.kopf} | ${s.text}`);
     if (ruhig) check(`${name}: reduzierte Bewegung – Statuszeile ohne Verschiebung`, s.transform === 'none', s.transform);
@@ -685,24 +730,36 @@ async function teilT3(browser, { theme, ruhig = false }) {
     await warte(page, 700);
     const yBereit = await page.evaluate(() => window.scrollY);
     s = await statusZeile(page);
-    check(`${name}: bereit – kein automatischer Sprung, Statuszeile «Lena ist bereit»`, Math.abs(yBereit - yVorher) <= 1 && s.sichtbar && s.text === 'Lena ist bereit', `scrollY ${yBereit}; ${s.kopf} | ${s.text}`);
+    check(`${name}: bereit – kein automatischer Sprung, Statuszeile «Lena ist bereit»`, Math.abs(yBereit - yScan) <= 1 && s.sichtbar && s.text === 'Lena ist bereit', `scrollY ${yScan} → ${yBereit}; ${s.kopf} | ${s.text}`);
     await shot(page, `${name}-2-statuszeile-bereit.png`);
     await page.tap('button[class*="statuszeile"]');
     await warte(page, ruhig ? 400 : 1100);
     const tel = await telefonLage(page);
     s = await statusZeile(page);
-    check(`${name}: Antippen springt zum Telefon (top ${tel.top} px unter dem Header), Statuszeile weg`, Math.abs(tel.top - tel.kopf) <= 4 && !s.sichtbar, `Telefon top ${tel.top}, Header ${tel.kopf}, Statuszeile ${s.sichtbar}`);
+    // [08.11.2026] AUFTRAG-120 (Z4): das Formular wartet jetzt oberhalb des Telefons — statt zu verschwinden zeigt die Statuszeile
+    // den Hinweis «Nummer eingeben für den Testanruf» (Ziel Aktionskarte)
+    const ziel = await page.evaluate(() => document.querySelector('button[data-ziel]')?.getAttribute('data-ziel') ?? null);
+    const hinweis = await page.evaluate(() => document.querySelector('button[data-ziel]')?.textContent.trim() ?? '');
+    check(`${name}: Antippen springt zum Telefon (top ${tel.top} px unter dem Header), Statuszeile weist zur wartenden Karte`, Math.abs(tel.top - tel.kopf) <= 4 && s.sichtbar && ziel === 'aktion' && hinweis === 'Nummer eingeben für den Testanruf', `Telefon top ${tel.top}, Header ${tel.kopf}, Statuszeile ${s.sichtbar} ${ziel} «${hinweis}»`);
     await shot(page, `${name}-3-nach-antippen.png`);
-    // Zum Formular: Telefon oben raus → Statuszeile wieder da, Pfeil nach oben
+    // Zum Formular: Telefon unten raus → Statuszeile wieder da; AUFTRAG-120: die Karte steht mobil VOR dem Telefon,
+    // der Pfeil zeigt deshalb nach unten
     await page.locator('#ki-demo-nummer').scrollIntoViewIfNeeded();
-    await page.evaluate(() => window.scrollBy(0, 120));
+    await page.evaluate(() => window.scrollBy(0, -120));
     await warte(page, 400);
     s = await statusZeile(page);
     const pfeil = await page.evaluate(() => document.querySelector('button[class*="statuszeile"] span.rounded-full svg')?.getAttribute('class') ?? '');
-    check(`${name}: beim Formular wieder sichtbar, Pfeil nach oben`, s.sichtbar && /arrow-up/.test(pfeil), `${s.text} · ${pfeil.slice(0, 40)}`);
+    check(`${name}: beim Formular wieder sichtbar, Pfeil nach unten (Telefon unter der Karte)`, s.sichtbar && /arrow-down/.test(pfeil), `${s.text} · ${pfeil.slice(0, 40)}`);
     await anrufStarten(page);
+    await warte(page, ruhig ? 400 : 1100);
+    // AUFTRAG-120: nach dem Anruf-Knopf springt die Seite zum Telefon, die Statuszeile ist dann weg
+    const telAnruf = await telefonLage(page);
+    s = await statusZeile(page);
+    check(`${name}: Anruf-Knopf springt zum Telefon (top ${telAnruf.top} px), Statuszeile weg`, Math.abs(telAnruf.top - telAnruf.kopf) <= 4 && !s.sichtbar, `Telefon top ${telAnruf.top}, Header ${telAnruf.kopf}, Statuszeile ${s.sichtbar}`);
+    // zurück zur Karte (Ablauf des Testanrufs): Telefon aus dem Bild → Statuszeile mit dem Anrufstand
+    await page.evaluate(() => document.querySelector('[aria-label="Ablauf des Testanrufs"]').scrollIntoView({ block: 'end' }));
     await page.locator('#ki-demo-anruf-knopf[data-zustand="waehlt"]').waitFor({ timeout: 30000 });
-    await warte(page, 300);
+    await warte(page, 400);
     s = await statusZeile(page);
     check(`${name}: Anruf – «Ihr Telefon klingelt …»`, s.sichtbar && s.text === 'Ihr Telefon klingelt …', `${s.kopf} | ${s.text}`);
     await page.locator('#ki-demo-anruf-knopf[data-zustand="verbunden"]').waitFor({ timeout: 30000 });

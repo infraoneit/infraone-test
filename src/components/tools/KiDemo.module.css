@@ -16,7 +16,10 @@
 .buehne {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
-    grid-template-areas: 'intro' 'konsole' 'telefon' 'aktion';
+    /* [08.11.2026] Warum: AUFTRAG-120 (Z1) — mobil steht die Aktionskarte (Firma → Nummer → Anruf) direkt unter
+       dem URL-Feld, das Telefon darunter; vorher lag die Karte erst nach dem ganzen Telefon (rund zwei
+       Bildschirmhöhen unter dem Scan-Knopf). Ab 1024 px gelten unverändert die Flächen im Block unten. */
+    grid-template-areas: 'intro' 'konsole' 'aktion' 'telefon';
     column-gap: 4rem;
     row-gap: 2rem;
 }
@@ -40,6 +43,35 @@
 /* Aktionskarte: feste Mindesthöhe über alle Anruf-Zustände (CLS 0 beim Polling) */
 .aktionKarte {
     min-height: var(--aktion-min, 0px);
+}
+
+/*
+ * [08.11.2026] Warum: AUFTRAG-120 (Z3), nur unter 1024 px — die Desktop-Blöcke unten bleiben byte-gleich.
+ * scroll-margin-top: Sprung zur Karte endet unter Header (64 px + 16 px Abstand oben, wie .statuszeile) und
+ * Statuszeile (48 px) plus 8 px Luft = 136 px.
+ */
+@media (max-width: 1023px) {
+    .aktionKarte {
+        scroll-margin-top: calc(4rem + max(1rem, env(safe-area-inset-top)) + 3rem + 0.5rem);
+    }
+    /*
+     * [09.11.2026] Warum: AUFTRAG-120, Nacharbeit 2 — solange der Firmen-Schritt lädt («Wir gleichen … ab»), hat die
+     * Karte die gemessene Höhe der Karte mit einem Treffer (KiDemo.tsx, firmaMin). Die Datenschutz-Zeile (letztes Kind
+     * der Firmenwahl) steht dabei schon unten, wo sie mit einem Treffer steht — sonst rutschte sie beim Eintreffen der
+     * Liste sichtbar nach unten (Layout-Verschiebung). Nur Handy; die Klasse wird nur mobil während des Ladens gesetzt.
+     */
+    .firmaLaden {
+        display: flex;
+        flex-direction: column;
+    }
+    .firmaLaden > [data-handelsregister] {
+        flex: 1 0 auto;
+        display: flex;
+        flex-direction: column;
+    }
+    .firmaLaden > [data-handelsregister] > :last-child {
+        margin-top: auto;
+    }
 }
 
 @media (min-width: 1024px) {

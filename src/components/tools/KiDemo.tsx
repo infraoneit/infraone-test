@@ -22,13 +22,13 @@
  * Farbe, kein Profil. Stufe 2 (`starteVollscan`, POST /api/demo/scan {scan_id}) erst nach der
  * Bestätigung der Firma: «Website wird gelesen …» → «Website gelesen», danach die bisherige Abfolge.
  */
-import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type FormEvent, type ReactNode } from 'react';
 import Link from 'next/link';
 import { ArrowDown, ArrowRight, ArrowUp, BookOpen, Check, Clock, Globe, Languages, Loader2, Phone, PhoneCall, RotateCcw, Timer, X } from 'lucide-react';
 import styles from './KiDemo.module.css';
 import { Telefon, SPRACH_WAHL, ANRUF_VON, sprachName, type KartenAnzeige, type SchrittAnzeige } from './ki-demo/Telefon';
 import { Handelsregister } from './ki-demo/Handelsregister';
-import { HR_CODE_ABGELAUFEN, HR_CODE_FEHLT, HR_SCHRITT, type HrAntwort, type HrBestaetigt } from '@/lib/demo/handelsregister-texte';
+import { HR_CODE_ABGELAUFEN, HR_CODE_FEHLT, HR_SCHRITT, type HrAntwort, type HrBestaetigt, type HrTrefferAnzeige } from '@/lib/demo/handelsregister-texte';
 import { ANFRAGE_FIRMA_SCHLUESSEL, ANFRAGE_HREF } from '@/lib/ki-anfrage';
 import { kuerzeName, sprechName } from '@/lib/demo/bindung';
 import {
@@ -82,6 +82,66 @@ const HINWEIS = {
 };
 
 const GRUEN_LEERLAUF = '#4CAF50';
+
+/*
+ * [08.11.2026] Warum: AUFTRAG-120 (Z2/Z4) — auf dem Handy «checkte niemand», was nach dem Scan zu tun ist. Die
+ * Aktionskarte sagt mobil in einer Zeile über der Überschrift, wo der Besucher steht; die Statuszeile (A-100)
+ * weist zur Karte, solange sie auf ihn wartet. Texte wortgleich aus dem Auftrag.
+ */
+const SCHRITT_FUEHRUNG = {
+    firma: 'Schritt 1 von 2 · Firma bestätigen',
+    nummer: 'Schritt 2 von 2 · Nummer eingeben, Testanruf starten',
+    laeuft: 'Testanruf läuft · Stand im Telefon unten',
+    beendet: 'Testanruf beendet · Ergebnis im Telefon unten',
+};
+const STATUS_ZUR_AKTION = {
+    firma: 'Bitte Firma bestätigen',
+    nummer: 'Nummer eingeben für den Testanruf',
+};
+
+/*
+ * [09.11.2026] Warum: AUFTRAG-120, Nacharbeit 2 — Muster für die Messung der Mindesthöhe im Firmen-Schritt (nur Handy):
+ * die Karte, wie sie mit GENAU EINEM Registertreffer aussieht. Der Name ist ein neutrales Muster mittlerer Länge
+ * (einzeilig wie die meisten Firmennamen); Untertitel und Website kommen aus dem laufenden Scan.
+ */
+const MUSTER_SCAN_ID = 's-mustermessung00';
+const MUSTER_TREFFER: HrTrefferAnzeige = {
+    uid: 'CHE000000000',
+    uid_formatiert: 'CHE-000.000.000',
+    name: 'Muster Handels AG',
+    sitz: 'Winterthur',
+    status: 'ACTIVE',
+    status_text: 'aktiv',
+    rechtsform: 'AG',
+    aktiv: true,
+};
+const MUSTER_ANTWORT: HrAntwort = { scan_id: MUSTER_SCAN_ID, modus: 'streng', ergebnis: 'treffer', quelle: 'uid', treffer: [MUSTER_TREFFER], versuche_rest: 3, bestaetigt: null };
+const nichts = () => undefined;
+
+/** AUFTRAG-120: Führung und Sprünge nur unterhalb von lg (1024 px); am Desktop bleibt alles wie A-100 */
+const MOBIL = '(max-width: 1023px)';
+const istMobilJetzt = () => typeof window !== 'undefined' && window.matchMedia(MOBIL).matches;
+function mobilAbonnieren(melden: () => void) {
+    const mq = window.matchMedia(MOBIL);
+    mq.addEventListener('change', melden);
+    return () => mq.removeEventListener('change', melden);
+}
+
+/**
+ * AUFTRAG-120 (Z3): weich zu einem Element scrollen (Oberkante minus scroll-margin-top), bei
+ * prefers-reduced-motion ohne Animation. Ziel aus der Lage im Dokument OHNE Transform (offsetTop-Kette):
+ * die Aktionskarte blendet beim Start des Scans mit translateY(8px) ein, scrollIntoView träfe sonst 8 px
+ * daneben. Fokus nur auf Wunsch und ohne eigenen Scroll (preventScroll), damit er den Sprung nicht zurückreisst.
+ */
+function scrolleZu(el: HTMLElement | null, fokus: boolean) {
+    if (!el) return;
+    const ruhig = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let oben = 0;
+    for (let e: HTMLElement | null = el; e; e = e.offsetParent as HTMLElement | null) oben += e.offsetTop;
+    const rand = parseFloat(getComputedStyle(el).scrollMarginTop) || 0;
+    window.scrollTo({ top: Math.max(0, oben - rand), behavior: ruhig ? 'auto' : 'smooth' });
+    if (fokus) el.focus({ preventScroll: true });
+}
 
 /** Schritte des Scans im Telefon: Website, Handelsregister (AUFTRAG-111), Logo, Farbe, Telefon, Öffnungszeiten, Wissen, Assistent */
 const SCAN_SCHRITTE = 8;
@@ -728,7 +788,8 @@ export function KiDemo({ children, turnstileSiteKey, begruessungNachStimme = fal
      * (unter dem Header) Schritt und Fund; Antippen springt zum Telefon.
      * Desktop: Das Telefon läuft ab lg mit (position: sticky, siehe CSS).
      */
-    const [sicht, setSicht] = useState({ telefon: true, oben: false, buehne: true });
+    // AUFTRAG-120: dazu die Lage der Aktionskarte (im Bild? oberhalb?) für den Hinweis in der Statuszeile
+    const [sicht, setSicht] = useState({ telefon: true, oben: false, buehne: true, aktion: true, aktionOben: false });
     useEffect(() => {
         const tel = telefonRef.current;
         const buehne = buehneRef.current;
@@ -776,6 +837,74 @@ export function KiDemo({ children, turnstileSiteKey, begruessungNachStimme = fal
         ro.observe(el);
         return () => ro.disconnect();
     }, [aktionSichtbar]);
+
+    /*
+     * [08.11.2026] Warum: AUFTRAG-120 (Z4) — wie beim Telefon (A-100) beobachtet ein IntersectionObserver die
+     * Aktionskarte. «Im Bild» heisst: unter Header und Statuszeile (64 + 16 + 48 px) sind mindestens 160 px
+     * (bzw. die halbe Karte) zu sehen. Liegt sie oberhalb, zeigt der Pfeil nach oben.
+     */
+    useEffect(() => {
+        const el = aktionRef.current;
+        if (!aktionSichtbar || !el || typeof IntersectionObserver === 'undefined') return;
+        const io = new IntersectionObserver(
+            ([e]) => {
+                const oberkante = e.rootBounds?.top ?? 128;
+                const aktion = e.isIntersecting && e.intersectionRect.height >= Math.min(160, e.boundingClientRect.height * 0.5);
+                const aktionOben = e.boundingClientRect.top < oberkante;
+                setSicht((s) => (s.aktion === aktion && s.aktionOben === aktionOben ? s : { ...s, aktion, aktionOben }));
+            },
+            { rootMargin: '-128px 0px 0px 0px', threshold: Array.from({ length: 21 }, (_, i) => i / 20) },
+        );
+        io.observe(el);
+        return () => io.disconnect();
+    }, [aktionSichtbar]);
+
+    /*
+     * [08.11.2026] Warum: AUFTRAG-120 (Z3) — mobil steht die Aktionskarte jetzt unter dem URL-Feld, das Telefon
+     * darunter. Beim Start des Scans springt die Seite zur Karte (Firmen-Schritt sofort im Bild), nach dem
+     * Anruf-Knopf zum Telefon (dort ist ab jetzt der Stand). Scheitert der Anruf-Auftrag (zurück zu «bereit»,
+     * Meldung in der Karte), wieder zur Karte. Nur unter 1024 px; am Desktop passiert nichts (A-100 bleibt).
+     * Kein automatischer Fokuswechsel zur Karte: bestehende Fokus-Regeln (Firmen-Radio, ki-demo-nummer) bleiben.
+     */
+    const vorZustand = useRef<Zustand>(zustand);
+    useEffect(() => {
+        const alt = vorZustand.current;
+        vorZustand.current = zustand;
+        if (alt === zustand || !istMobilJetzt()) return;
+        if (alt === 'eingabe' && zustand === 'scan') scrolleZu(aktionRef.current, false);
+        else if (alt === 'bereit' && zustand === 'wartend') scrolleZu(telefonRef.current, true);
+        else if (alt === 'wartend' && zustand === 'bereit') scrolleZu(aktionRef.current, false);
+    }, [zustand]);
+
+    /** AUFTRAG-120 (Z4): Antippen der Statuszeile im Hinweis-Modus — zur Aktionskarte, Fokus auf die Karte */
+    const zurAktion = () => scrolleZu(aktionRef.current, true);
+    const istMobil = useSyncExternalStore(mobilAbonnieren, istMobilJetzt, () => false);
+
+    /*
+     * [09.11.2026] Warum: AUFTRAG-120, Nacharbeit 2 — mobil steht das Telefon unter der Karte und ist im Firmen-Schritt
+     * teilweise im Bild. Wuchs die Karte beim Eintreffen der Registerantwort von «Wir gleichen … ab» auf die
+     * Trefferliste, rutschte das sichtbare Telefon ohne Eingabe um rund 227 px (CLS 0,15). Deshalb hat die Karte
+     * WÄHREND DES LADENS (nur Handy) eine Mindesthöhe = gemessene Höhe derselben Karte mit genau einem Treffer.
+     * Messung wie aktionMin, kein fester Wert: Beim Start des Ladens wird ein Muster (gleiche Breite, gleiche Klassen,
+     * Firmen-Schritt mit einem Eintrag) unsichtbar ausserhalb des Bildes gerendert, im Layout-Effekt gemessen und
+     * vor dem Malen wieder entfernt (zwei Layout-Effekte, kein sichtbares Bild, IDs nur für diesen einen Durchlauf
+     * doppelt). Mehr Treffer (bis 5) machen die Karte höher — kein Abschneiden. Danach hält aktionMin die Höhe.
+     */
+    const laedtFirma = istMobil && zustand === 'scan' && !hrOk && hrStart === null;
+    const [musterBreite, setMusterBreite] = useState<number | null>(null);
+    const [firmaMin, setFirmaMin] = useState(0);
+    const musterRef = useRef<HTMLDivElement>(null);
+    useLayoutEffect(() => {
+        if (!laedtFirma) return;
+        const breite = aktionRef.current?.getBoundingClientRect().width;
+        if (breite) setMusterBreite(breite);
+    }, [laedtFirma]);
+    useLayoutEffect(() => {
+        if (musterBreite === null) return;
+        const h = musterRef.current?.getBoundingClientRect().height ?? 0;
+        if (h > 0) setFirmaMin(Math.ceil(h));
+        setMusterBreite(null);
+    }, [musterBreite]);
 
     const andereWebsite = () => {
         // neuer Lauf: verspätete Antworten des bisherigen Scans werden verworfen
@@ -1130,7 +1259,41 @@ export function KiDemo({ children, turnstileSiteKey, begruessungNachStimme = fal
                 return { kopf: 'Testanruf', text: fehlerTitel(auftrag?.grund), zeichen: 'fehler' };
         }
     })();
-    const statusSichtbar = !!statusZeile && !sicht.telefon && sicht.buehne;
+    /*
+     * [08.11.2026] Warum: AUFTRAG-120 (Z4) — wartet die Aktionskarte auf den Besucher (Firmen-Schritt mit Antwort
+     * des Registers, oder Formular ohne Anruf) und ist sie nicht im Bild, zeigt die Statuszeile statt des
+     * Scan-Schritts den Hinweis und springt zur Karte. Läuft der Anruf oder ist er beendet: wie A-100 (Telefon).
+     */
+    const aktionHinweis =
+        (zustand === 'scan' || zustand === 'bereit') && !hrOk && hrStart !== null
+            ? STATUS_ZUR_AKTION.firma
+            : zustand === 'bereit' && hrOk && !!karte && !anrufSperre
+              ? STATUS_ZUR_AKTION.nummer
+              : null;
+    const zurAktionZeigen = !!aktionHinweis && !sicht.aktion && sicht.buehne;
+    const statusSichtbar = zurAktionZeigen || (!!statusZeile && !sicht.telefon && sicht.buehne);
+
+    /*
+     * [08.11.2026] Warum: AUFTRAG-120 (Z2) — Schrittführung in der Aktionskarte (nur mobil, lg:hidden). Nach der
+     * Bestätigung gilt «Schritt 2 von 2» auch, solange das Formular noch als Platzhalter wartet (Vollscan läuft):
+     * die Zeile bleibt so ohne Wechsel stehen (kein Layout-Sprung).
+     */
+    const firmenSchritt = (zustand === 'scan' || zustand === 'bereit') && !hrOk;
+    const schrittText = firmenSchritt
+        ? SCHRITT_FUEHRUNG.firma
+        : zustand === 'scan' || zustand === 'bereit'
+          ? SCHRITT_FUEHRUNG.nummer
+          : imAnruf
+            ? SCHRITT_FUEHRUNG.laeuft
+            : zustand === 'beendet' || zustand === 'fehler'
+              ? SCHRITT_FUEHRUNG.beendet
+              : null;
+    const schrittZeile = (text: string) => (
+        <p data-ki-demo-schritt="" className="lg:hidden mb-3 flex items-start gap-2 text-sm leading-5 font-medium text-text-secondary">
+            <span className="mt-1.5 w-2 h-2 flex-shrink-0 rounded-full bg-primary" aria-hidden="true" />
+            {text}
+        </p>
+    );
 
 
     /** Bestätigte Firma (Zeile «Handelsregister: Name, Sitz · UID») — über dem Formular bzw. über dem Hinweis nach einem Fehler im Vollscan */
@@ -1467,10 +1630,14 @@ export function KiDemo({ children, turnstileSiteKey, begruessungNachStimme = fal
                     <section
                         ref={aktionRef}
                         aria-labelledby="ki-demo-anruf-titel"
-                        className={`${styles.einblenden} ${styles.aktionKarte} rounded-[1.75rem] border border-border bg-card p-5 sm:p-7 shadow-[0_30px_60px_-40px_rgba(10,18,10,0.45)]`}
-                        style={aktionMin ? { minHeight: aktionMin } : undefined}
+                        // AUFTRAG-120 (Z4): mobil fokussierbar (Ziel der Statuszeile), am Desktop unverändert
+                        tabIndex={istMobil ? -1 : undefined}
+                        className={`${styles.einblenden} ${styles.aktionKarte} ${laedtFirma ? styles.firmaLaden : ''} rounded-[1.75rem] border border-border bg-card p-5 sm:p-7 shadow-[0_30px_60px_-40px_rgba(10,18,10,0.45)] focus:outline-none`}
+                        // AUFTRAG-120, Nacharbeit 2: mobil während des Ladens mindestens so hoch wie die Karte mit einem Treffer
+                        style={aktionMin || (laedtFirma && firmaMin) ? { minHeight: Math.max(aktionMin, laedtFirma ? firmaMin : 0) } : undefined}
                     >
-                        {(zustand === 'scan' || zustand === 'bereit') && !hrOk ? (
+                        {schrittText && schrittZeile(schrittText)}
+                        {firmenSchritt ? (
                             // AUFTRAG-111: «Welche ist Ihre Firma?» sofort nach der URL-Eingabe (während des Scans);
                             // nach 403 (Bestätigung abgelaufen) wieder hier
                             <Handelsregister
@@ -1560,20 +1727,24 @@ export function KiDemo({ children, turnstileSiteKey, begruessungNachStimme = fal
                 )}
             </div>
 
-            {/* AUFTRAG-100: Statuszeile mobil (fest unter dem Header, 48 px), solange das Telefon nicht im Bild ist */}
+            {/* AUFTRAG-100: Statuszeile mobil (fest unter dem Header, 48 px), solange das Telefon nicht im Bild ist.
+                AUFTRAG-120 (Z4): wartet die Aktionskarte ausserhalb des Bildes, zeigt sie stattdessen den Hinweis und springt zur Karte. */}
             <button
                 type="button"
-                onClick={zumTelefon}
+                onClick={zurAktionZeigen ? zurAktion : zumTelefon}
                 className={styles.statuszeile}
                 data-sichtbar={statusSichtbar ? 'true' : undefined}
                 aria-hidden={!statusSichtbar || undefined}
                 tabIndex={statusSichtbar ? 0 : -1}
                 data-zustand={zustand}
+                data-ziel={zurAktionZeigen ? 'aktion' : 'telefon'}
             >
                 <span className="container mx-auto flex h-full items-center gap-3 px-4 text-left">
                     {/* key: jedes Zeichen ist ein neues Element (kein Umbau eines bestehenden = keine Layout-Verschiebung) */}
-                    <span key={statusZeile?.zeichen ?? 'leer'} className="flex h-7 w-7 flex-shrink-0 items-center justify-center" aria-hidden="true">
-                        {statusZeile?.zeichen === 'scan' ? (
+                    <span key={zurAktionZeigen ? 'hinweis' : (statusZeile?.zeichen ?? 'leer')} className="flex h-7 w-7 flex-shrink-0 items-center justify-center" aria-hidden="true">
+                        {zurAktionZeigen ? (
+                            <span className={`${styles.puls} text-primary`} />
+                        ) : statusZeile?.zeichen === 'scan' ? (
                             <Loader2 className="h-5 w-5 text-primary motion-safe:animate-spin" />
                         ) : statusZeile?.zeichen === 'farbe' ? (
                             <span className="h-4 w-4 rounded-full ring-2 ring-black/10 dark:ring-white/15" style={{ background: statusZeile.farbe ?? GRUEN_LEERLAUF }} />
@@ -1593,16 +1764,44 @@ export function KiDemo({ children, turnstileSiteKey, begruessungNachStimme = fal
                             <Check className="h-5 w-5 text-primary" strokeWidth={2.6} />
                         )}
                     </span>
-                    <span className="min-w-0 flex-1 leading-tight">
-                        <span className="block truncate text-xs text-text-secondary tabular-nums">{statusZeile?.kopf}</span>
-                        <span className="block truncate text-sm font-semibold text-text-primary tabular-nums">{statusZeile?.text}</span>
-                    </span>
-                    <span className="inline-flex flex-shrink-0 items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-text-primary">
-                        Zum Telefon
-                        {sicht.oben ? <ArrowUp className="h-3.5 w-3.5" aria-hidden="true" /> : <ArrowDown className="h-3.5 w-3.5" aria-hidden="true" />}
-                    </span>
+                    {/* AUFTRAG-120, Nacharbeit 2: eigene keys je Variante — ein umgebautes Element zählte als Layout-Verschiebung */}
+                    {zurAktionZeigen ? (
+                        <>
+                            <span key="hinweis-text" className="min-w-0 flex-1 truncate text-sm font-semibold leading-tight text-text-primary">
+                                {aktionHinweis}
+                            </span>
+                            <span key="hinweis-pfeil" className="inline-flex flex-shrink-0 items-center rounded-full bg-primary/10 px-2.5 py-1 text-text-primary">
+                                {sicht.aktionOben ? <ArrowUp className="h-3.5 w-3.5" aria-hidden="true" /> : <ArrowDown className="h-3.5 w-3.5" aria-hidden="true" />}
+                            </span>
+                        </>
+                    ) : (
+                        <>
+                            <span key="telefon-text" className="min-w-0 flex-1 leading-tight">
+                                <span className="block truncate text-xs text-text-secondary tabular-nums">{statusZeile?.kopf}</span>
+                                <span className="block truncate text-sm font-semibold text-text-primary tabular-nums">{statusZeile?.text}</span>
+                            </span>
+                            <span key="telefon-pill" className="inline-flex flex-shrink-0 items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-text-primary">
+                                Zum Telefon
+                                {sicht.oben ? <ArrowUp className="h-3.5 w-3.5" aria-hidden="true" /> : <ArrowDown className="h-3.5 w-3.5" aria-hidden="true" />}
+                            </span>
+                        </>
+                    )}
                 </span>
             </button>
+
+            {/* AUFTRAG-120, Nacharbeit 2: Mess-Muster (Karte mit einem Treffer) — nur für einen Layout-Durchlauf, nie sichtbar */}
+            {musterBreite !== null && (
+                <div
+                    ref={musterRef}
+                    aria-hidden="true"
+                    inert
+                    className="invisible fixed left-0 top-0 rounded-[1.75rem] border border-border bg-card p-5 sm:p-7"
+                    style={{ width: musterBreite }}
+                >
+                    {schrittZeile(SCHRITT_FUEHRUNG.firma)}
+                    <Handelsregister scanId={MUSTER_SCAN_ID} website={host} start={MUSTER_ANTWORT} onNochmals={nichts} onBestaetigt={nichts} onAndereWebsite={nichts} />
+                </div>
+            )}
 
             {/* Ansage der Zustandswechsel für Screenreader */}
             <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">
