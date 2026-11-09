@@ -5,6 +5,11 @@
 [build.environment]
   NODE_VERSION = "22"
   NODE_ENV = "production"
+  # [09.11.2026] AUFTRAG-122 K8 / Inhaber-Freigabe Live: Die KI-Demo zeigt im Telefon «Anruf von …».
+  # peoplefone setzt als Absender die Portal-Ausgangsnummer 052 222 18 18 (oeffentliche Hauptnummer),
+  # nicht die KI-Linie. Ohne Variable stuende dort +41 44 552 03 06 und der Besucher saehe eine andere
+  # Nummer als auf seinem Handy. Wird beim Build eingesetzt (Telefon.tsx, ANRUF_VON).
+  NEXT_PUBLIC_DEMO_ANRUF_VON = "052 222 18 18"
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
