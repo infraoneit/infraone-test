@@ -24,8 +24,11 @@
  *
  * [09.11.2026] Warum: AUFTRAG-123 ruhige Bühne — auf dem Handy (Kompaktmodus) ein Gedanke pro Moment: das Telefon erzählt
  * gross; braucht es eine Handlung, liegt unten EIN Blatt (eine Frage, eine Haupthandlung) und das Telefon skaliert sich
- * per Transform darüber (nie angeschnitten, unter 0,32 ausgeblendet). «bereit» erst als Kurzblatt, dann das Formular.
- * Desktop unverändert.
+ * per Transform darüber (nie angeschnitten, unter 0,36 ausgeblendet — AUFTRAG-123b). «bereit» erst als Kurzblatt, dann das
+ * Formular. Desktop unverändert.
+ *
+ * [09.11.2026] Warum: AUFTRAG-123b Feinschliff — Schwelle 0,36 statt 0,32 (keine Briefmarke), 409-Haupthandlung ohne
+ * Globus (einzeilig), kürzerer Such-Platzhalter, Ende/Fehler mit EINER Haupthandlung und einem Textlink darunter.
  */
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type FormEvent, type ReactNode } from 'react';
 import Link from 'next/link';
@@ -117,11 +120,15 @@ const BEREIT_TEXT = {
 /*
  * [09.11.2026] Warum: AUFTRAG-123 (Z2.2/Z2.3) — Luft zwischen Telefon und Blatt (px) und kleinste Skala: darunter blendet das
  * Telefon aus (keine Briefmarke). Z3: Schatten des Blatts nach oben (dunkel kräftiger).
+ * [09.11.2026] Warum: AUFTRAG-123b (N1) — Schwelle 0,36 statt 0,32: bei 0,327 (Formular 393×727) und 0,341 (430×739) war das
+ * Telefon nur noch ≈ 90 × 190 px gross (Briefmarke, A-123 O3). Firmen-Schritt (390×664: 0,383) und Kurzblätter bleiben sichtbar.
  */
 const TELEFON_LUFT = 12;
-const TELEFON_MIN_SKALA = 0.32;
+const TELEFON_MIN_SKALA = 0.36;
 const BLATT_SCHATTEN = 'shadow-[0_-12px_40px_-16px_rgba(10,18,10,0.35)] dark:shadow-[0_-12px_40px_-12px_rgba(0,0,0,0.8)]';
 const BLATT_TITEL = 'text-[1.375rem] font-bold leading-tight tracking-tight text-text-primary focus:outline-none';
+/** [09.11.2026] Warum: AUFTRAG-123b (N4) — Textlink unter der Haupthandlung (zentriert, Trefferfläche 44 px; wie im Firmen-Blatt) */
+const BLATT_LINK = 'mx-auto mt-1 flex min-h-[44px] w-fit items-center justify-center px-3 text-sm font-semibold text-text-primary underline underline-offset-2 hover:no-underline';
 
 /** AUFTRAG-120/121: Kompaktmodus nur unterhalb von lg (1024 px); am Desktop bleibt alles wie A-100 */
 const MOBIL = '(max-width: 1023px)';
@@ -1231,8 +1238,8 @@ export function KiDemo({ children, turnstileSiteKey, begruessungNachStimme = fal
     /*
      * [09.11.2026] Warum: AUFTRAG-123 (Z2) — das Telefon wird nie vom Blatt angeschnitten. Mobil (Kompaktmodus) skaliert es
      * sich per Transform (Ursprung oben Mitte, CSS) auf s = min(1, (Bühnenhöhe − Blatthöhe − 12 px) / Telefonhöhe); unter
-     * 0,32 blendet es aus (data-telefon-aus, bleibt im DOM). Ohne Blatt s = min(1, Bühnenhöhe / Telefonhöhe): 1, ausser die
-     * Mindestbreite (CSS --telefon-min-b, sehr niedrige Fenster wie 375×553) macht das Telefon höher als die Bühne.
+     * TELEFON_MIN_SKALA (0,36, AUFTRAG-123b N1) blendet es aus (data-telefon-aus, bleibt im DOM). Ohne Blatt
+     * s = min(1, Bühnenhöhe / Telefonhöhe): 1, ausser die Mindestbreite (CSS --telefon-min-b, sehr niedrige Fenster wie 375×553) macht das Telefon höher als die Bühne.
      * Gemessen per ResizeObserver an Bühne, Telefon und Blatt (Blatt mit display: none = Höhe 0 = kein Blatt). Gesetzt direkt
      * an der Bühne (--telefon-skala) und vor dem Zeichnen, damit Blatt und Skala im selben Bild gelten. Transform verschiebt
      * kein Layout (CLS 0). Am Desktop weder Variable noch Attribut.
@@ -1762,8 +1769,21 @@ export function KiDemo({ children, turnstileSiteKey, begruessungNachStimme = fal
     /** K3.4: Anruf beendet — Zusammenfassung (acht Zeilen, «Mehr anzeigen»), Nochmals testen + Angebot anfragen; Fehlerfall */
     const kompaktEnde = () => {
         const gescheitert = zustand === 'fehler';
-        const zweitKnopf =
-            'inline-flex items-center justify-center min-h-12 px-3 py-2 rounded-2xl border-2 border-border text-text-primary text-[0.9375rem] font-semibold leading-tight text-center hover:border-primary transition-colors focus-visible:outline-2 focus-visible:outline-offset-2';
+        /*
+         * [09.11.2026] Warum: AUFTRAG-123b (N4) — Z3-Regel «eine Haupthandlung, höchstens ein Textlink», untereinander. Vorher
+         * standen zwei gleich gewichtete Knöpfe nebeneinander und brachen bei 360–390 px zweizeilig um (A-123 O7). Ende:
+         * «Angebot anfragen» (Dunkelgrün #1f7a35 wie Bestand, ≥ 4,5:1 hell und dunkel) + Textlink «Nochmals testen»; Fehler:
+         * «Nochmals versuchen» (Markengrün wie die übrigen Haupthandlungen) + Textlink «Angebot anfragen». IDs, Hash-Link als
+         * natives <a>, sessionStorage-Vorbelegung und Handler unverändert.
+         */
+        const anfrageVorbelegen = () => {
+            const testFirma = hrBestaetigt?.name ?? (hrUebersprungen ? karte?.profil.firma : undefined) ?? '';
+            try {
+                if (testFirma.trim()) window.sessionStorage.setItem(ANFRAGE_FIRMA_SCHLUESSEL, testFirma.trim());
+            } catch {
+                // sessionStorage gesperrt: Formular öffnet ohne Vorbelegung
+            }
+        };
         return (
             <div data-ki-demo-ende={gescheitert ? 'fehler' : 'beendet'} className="flex min-h-0 flex-1 flex-col">
                 {/* [09.11.2026] Warum: AUFTRAG-123 (Z7) — Dauer rechts in der Titelzeile statt als eigene Zeile; Abstände nach Z3 */}
@@ -1799,29 +1819,41 @@ export function KiDemo({ children, turnstileSiteKey, begruessungNachStimme = fal
                         )}
                     </div>
                 )}
-                <div className="mt-auto flex-shrink-0 pt-4 grid grid-cols-2 gap-2">
-                    <button type="button" id="ki-demo-nochmals-testen" data-blatt-zweit="" onClick={gescheitert ? nochmalsKompakt : andereWebsite} className={zweitKnopf}>
-                        {gescheitert ? 'Nochmals versuchen' : 'Nochmals testen'}
-                    </button>
-                    {/* natives <a> wegen des Hashs; Firma wie beim Desktop-Link (AUFTRAG-114) im Formular vorbelegt. Dunkelgrün wie der
-                        Knopf «verbunden» (Bestand): Weiss auf bg-primary erreicht in 15 px nur 3,7:1 (hell) bzw. 2,8:1 (dunkel), hier ≥ 4.5:1 */}
-                    <a
-                        href={`#${ANFRAGE_ID}`}
-                        onClick={() => {
-                            const testFirma = hrBestaetigt?.name ?? (hrUebersprungen ? karte?.profil.firma : undefined) ?? '';
-                            try {
-                                if (testFirma.trim()) window.sessionStorage.setItem(ANFRAGE_FIRMA_SCHLUESSEL, testFirma.trim());
-                            } catch {
-                                // sessionStorage gesperrt: Formular öffnet ohne Vorbelegung
-                            }
-                        }}
-                        data-ki-demo-anfrage=""
-                        data-blatt-haupt=""
-                        className={`${styles.knopf} inline-flex items-center justify-center min-h-12 px-3 py-2 rounded-2xl text-[0.9375rem] font-bold leading-tight text-center bg-[#1f7a35] text-white shadow-lg shadow-[#1f7a35]/30 hover:bg-[#1a6a2e] focus-visible:outline-2 focus-visible:outline-offset-2`}
-                    >
-                        Angebot anfragen
-                    </a>
-                </div>
+                {gescheitert ? (
+                    <div className="mt-auto flex-shrink-0 pt-4">
+                        <button
+                            type="button"
+                            id="ki-demo-nochmals-testen"
+                            data-blatt-haupt=""
+                            onClick={nochmalsKompakt}
+                            className={`${styles.knopf} ${KNOPF_BASIS} bg-primary text-white shadow-lg shadow-primary/25 hover:bg-primary-hover`}
+                        >
+                            <RotateCcw className="w-5 h-5 flex-shrink-0" aria-hidden="true" />
+                            Nochmals versuchen
+                        </button>
+                        {/* natives <a> wegen des Hashs; Firma wie beim Desktop-Link (AUFTRAG-114) im Formular vorbelegt */}
+                        <a href={`#${ANFRAGE_ID}`} onClick={anfrageVorbelegen} data-ki-demo-anfrage="" data-blatt-link="" className={BLATT_LINK}>
+                            Angebot anfragen
+                        </a>
+                    </div>
+                ) : (
+                    <div className="mt-auto flex-shrink-0 pt-4">
+                        {/* natives <a> wegen des Hashs; Firma wie beim Desktop-Link (AUFTRAG-114) im Formular vorbelegt. Dunkelgrün wie der
+                            Knopf «verbunden» (Bestand): Weiss auf bg-primary erreicht nur 3,7:1 (hell) bzw. 2,8:1 (dunkel), hier ≥ 4.5:1 */}
+                        <a
+                            href={`#${ANFRAGE_ID}`}
+                            onClick={anfrageVorbelegen}
+                            data-ki-demo-anfrage=""
+                            data-blatt-haupt=""
+                            className={`${styles.knopf} ${KNOPF_BASIS} bg-[#1f7a35] text-white shadow-lg shadow-[#1f7a35]/30 hover:bg-[#1a6a2e]`}
+                        >
+                            Angebot anfragen
+                        </a>
+                        <button type="button" id="ki-demo-nochmals-testen" data-blatt-link="" onClick={andereWebsite} className={BLATT_LINK}>
+                            Nochmals testen
+                        </button>
+                    </div>
+                )}
             </div>
         );
     };

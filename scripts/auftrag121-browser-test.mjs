@@ -8,9 +8,20 @@
  *
  * [09.11.2026] Warum: AUFTRAG-123 ruhige Bühne — ein Gedanke pro Moment. Das Telefon steht gross in der Bühne
  * (sichtbares Fenster ohne 560-px-Boden); braucht es eine Handlung, liegt unten EIN Blatt (Frage + Haupthandlung) und
- * das Telefon skaliert sich per Transform darüber (nie angeschnitten, unter 0,32 ausgeblendet). Gemessen an echten
- * Handy-Höhen (360×640, 375×553, 390×664, 393×727, 430×739, 375×812) und am Tablet (768×1024); je Schritt die
+ * das Telefon skaliert sich per Transform darüber (nie angeschnitten, unter 0,36 ausgeblendet — AUFTRAG-123b). Gemessen an
+ * echten Handy-Höhen (360×640, 375×553, 390×664, 393×727, 430×739, 375×812) und am Tablet (768×1024); je Schritt die
  * Z9-Punkte als einzelne check()-Zeilen. Die A-122-Phase `prozent` ist entfallen (keine feste Kartenhöhe mehr).
+ *
+ * [09.11.2026] Warum: AUFTRAG-123b Feinschliff — zusätzlich geprüft:
+ *   N1  Schwelle 0,36: in jedem Blatt-Schritt Telefon ausgeblendet genau dann, wenn die Skala < 0,36 ist.
+ *   N2  409 «Andere Website eingeben» ohne Globus, einzeilig, 56 px — Läufe bei 360, 375, 390 und 430 px Breite.
+ *   N3  Such-Platzhalter mobil «z. B. Muster AG», nicht abgeschnitten (Textbreite ≤ Innenbreite) — 360 und 390 px.
+ *   N4  Ende: Haupthandlung «Angebot anfragen» (volle Breite, 56 px, Radius 16 px, #1f7a35), darunter Textlink
+ *       «Nochmals testen»; Fehler: «Nochmals versuchen» + Textlink «Angebot anfragen». Nach «Mehr anzeigen» bleiben beide im Bild.
+ *   N5  Regel für CLS ≠ 0 (Bestand O1): Liegen SÄMTLICHE Quellen aller Layout-Shifts eines Laufs innerhalb der Telefon-Figur
+ *       (figure[aria-label^="Vorschau"]) und ist die Summe ≤ 0,001, wird das als «INFO bekannt (Bestand Telefon-Ansicht,
+ *       O1)» protokolliert statt als Fehlschlag (derselbe Shift misst am Desktop, Telefon-Ansicht laut Auftrag tabu). Jede
+ *       Quelle ausserhalb des Telefons, eine Quelle ohne Knoten oder eine Summe > 0,001 bleibt ein Fehlschlag.
  *
  *   PHASE=vorher  → nur Bilder (Stand vor der Änderung, 6682c0b): Desktop-Referenz, Handy 390×664 und 360×640 mit 1 und 5 Treffern
  *   PHASE=nachher → Z9 je Viewport und Schritt, Fälle (1/5 Treffer, Suche, 409, Anruf gescheitert), Statuszeile beim
@@ -20,7 +31,7 @@
  *                   Ablauf-Liste und im Telefon-Bildschirm (Desktop, damit das Telefon sichtbar ist)
  *
  *   $env:BASE_URL='http://localhost:3011'; $env:PHASE='nachher'; node scripts/auftrag121-browser-test.mjs
- *   Bilder: $env:SCREENS_DIR (Vorgabe auftraege/ergebnisse/A123-screens); $env:NUR='390x664' nur diese Läufe
+ *   Bilder: $env:SCREENS_DIR (Vorgabe auftraege/ergebnisse/A123b-screens); $env:NUR='390x664' nur diese Läufe
  */
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -38,6 +49,9 @@ const CHROME = process.env.PLAYWRIGHT_CHROMIUM || 'C:/Program Files/Google/Chrom
 const SEITE = `${BASE}/ki-telefonassistent`;
 const ANRUF_VON = process.env.ERWARTE_ANRUF_VON || '+41 44 552 03 06';
 const NUR = process.env.NUR || null;
+/** [09.11.2026] Warum: AUFTRAG-123b (N1) — kleinste Telefon-Skala (KiDemo.tsx TELEFON_MIN_SKALA); N5 — Grenze für den bekannten Shift */
+const SKALA_MIN = 0.36;
+const CLS_BEKANNT_MAX = 0.001;
 
 function ergebnisOrdner() {
     let d = ROOT;
@@ -47,8 +61,8 @@ function ergebnisOrdner() {
     }
     return path.join(ROOT, 'auftraege-ergebnisse');
 }
-// [09.11.2026] Warum: AUFTRAG-123 ruhige Bühne — Bilder unter A123-screens
-const SCREENS_BASIS = process.env.SCREENS_DIR || path.join(ergebnisOrdner(), 'A123-screens');
+// [09.11.2026] Warum: AUFTRAG-123 ruhige Bühne — Bilder unter A123-screens; AUFTRAG-123b: Vorgabe A123b-screens
+const SCREENS_BASIS = process.env.SCREENS_DIR || path.join(ergebnisOrdner(), 'A123b-screens');
 const SCREENS = path.join(SCREENS_BASIS, PHASE);
 mkdirSync(SCREENS, { recursive: true });
 
@@ -338,6 +352,11 @@ function pruefeSchritt(lauf, schritt, m, { passiv = false, blattErwartet = !pass
         !!t && (t.aus || (t.top >= (m.kompakt?.bottom ?? 0) - 0.5 && t.bottom <= grenze + 0.5)),
         lageText(m),
     );
+    // [09.11.2026] Warum: AUFTRAG-123b (N1) — Schwelle 0,36 (vorher 0,32): ausgeblendet genau dann, wenn die Skala darunter liegt
+    if (m.blatt) {
+        const s = parseFloat(m.skalaVar);
+        check(`${p} N1: Telefon ${t?.aus ? 'ausgeblendet' : 'sichtbar'} bei Skala ${m.skalaVar} (ausgeblendet genau unter ${SKALA_MIN})`, !!t && Number.isFinite(s) && t.aus === s < SKALA_MIN, lageText(m));
+    }
     // Skala ohne Blatt = 1; nur wo die Mindestbreite (240 px) das Telefon höher als die Bühne macht (375×553), die Einpass-Skala
     if (passiv) check(`${p} Z9.4: passive Phase — kein Blatt im DOM, Skala ${einpass(m)} (ohne Blatt), Telefon sichtbar`, !m.blattImDom && Math.abs((t?.skala ?? 0) - einpass(m)) < 0.005 && !t?.aus, lageText(m));
     if (m.blatt)
@@ -488,7 +507,8 @@ function initSkript(theme) {
         window.__maxScroll = 0;
         addEventListener('scroll', () => { window.__maxScroll = Math.max(window.__maxScroll, scrollY); }, { passive: true });
         window.__cls = [];
-        new PerformanceObserver((l) => { for (const e of l.getEntries()) if (!e.hadRecentInput) window.__cls.push({ wert: e.value, zeit: Math.round(e.startTime), quellen: (e.sources || []).map((q) => (q.node?.nodeName ?? '?') + '.' + String(q.node?.className ?? '').slice(0, 50) + ' ' + Math.round(q.previousRect.top) + '→' + Math.round(q.currentRect.top) + ' h' + Math.round(q.previousRect.height) + '→' + Math.round(q.currentRect.height)) }); }).observe({ type: 'layout-shift', buffered: true });`;
+        // [09.11.2026] Warum: AUFTRAG-123b (N5) — je Quelle zusätzlich, ob ihr Knoten in der Telefon-Figur liegt (imTelefon)
+        new PerformanceObserver((l) => { const fig = document.querySelector('figure[aria-label^="Vorschau"]'); for (const e of l.getEntries()) if (!e.hadRecentInput) window.__cls.push({ wert: e.value, zeit: Math.round(e.startTime), quellen: (e.sources || []).map((q) => (q.node?.nodeName ?? '?') + '.' + String(q.node?.className ?? '').slice(0, 50) + ' ' + Math.round(q.previousRect.top) + '→' + Math.round(q.currentRect.top) + ' h' + Math.round(q.previousRect.height) + '→' + Math.round(q.currentRect.height)), imTelefon: (e.sources || []).map((q) => !!fig && !!q.node && fig.contains(q.node)) }); }).observe({ type: 'layout-shift', buffered: true });`;
 }
 
 const browser = await chromium.launch({ executablePath: CHROME, headless: true });
@@ -612,6 +632,23 @@ async function mobilLauf(o) {
             return f && k ? { feldUnten: f.bottom, knopfOben: k.top, knopfH: k.height, knopfB: k.width, feldB: f.width, feldH: f.height } : null;
         });
         check(`[${name}] Z4.4 Suche: «Firma nicht gefunden», Suchfeld und «Suchen» untereinander, «Suchen» als Haupthandlung volle Breite`, mk.blatt?.titel === 'Firma nicht gefunden' && suche && suche.knopfOben >= suche.feldUnten && Math.abs(suche.knopfB - suche.feldB) <= 1 && suche.knopfH >= 44 && mk.blatt.haupt.some((h) => h.id === 'ki-demo-hr-suchen'), JSON.stringify(suche));
+        // [09.11.2026] Warum: AUFTRAG-123b (N3) — Platzhalter mobil «z. B. Muster AG», nicht abgeschnitten: Textbreite (Canvas, Schrift
+        // des Felds) ≤ Innenbreite des Felds (clientWidth − Innenabstand); dazu scrollWidth ≤ clientWidth (leeres Feld)
+        const n3 = await page.evaluate(() => {
+            const f = document.querySelector('#ki-demo-hr-suche');
+            const cs = getComputedStyle(f);
+            const ctx = document.createElement('canvas').getContext('2d');
+            ctx.font = `${cs.fontStyle} ${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+            const textB = Math.round(ctx.measureText(f.placeholder).width * 10) / 10;
+            const innen = Math.round((f.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)) * 10) / 10;
+            return { platzhalter: f.placeholder, wert: f.value, textB, innen, scrollW: f.scrollWidth, clientW: f.clientWidth, schrift: cs.fontSize, label: document.querySelector('label[for="ki-demo-hr-suche"]')?.innerText.trim() };
+        });
+        (protokoll.n3 = protokoll.n3 ?? {})[name] = n3;
+        check(
+            `[${name}] N3 Suche: Platzhalter «z. B. Muster AG», Beschriftung «Firmenname oder UID»; nicht abgeschnitten (Text ${n3.textB} ≤ ${n3.innen} px innen, scrollWidth ${n3.scrollW} ≤ clientWidth ${n3.clientW})`,
+            n3.platzhalter === 'z. B. Muster AG' && n3.label === 'Firmenname oder UID' && n3.wert === '' && n3.textB <= n3.innen && n3.scrollW <= n3.clientW,
+            JSON.stringify(n3),
+        );
         await bild('2a-suche', null);
         await page.fill('#ki-demo-hr-suche', 'Beispiel AG');
         await page.tap('#ki-demo-hr-suchen');
@@ -680,13 +717,33 @@ async function mobilLauf(o) {
             /Die Website beispiel-ag\.ch gehört laut Handelsregister und Website-Inhalt nicht zu Muster Holding AG\. Bitte geben Sie die Website Ihrer Firma ein oder wählen Sie den passenden Eintrag\./.test(mp.blatt?.text ?? '') && mp.blatt.haupt.length === 1 && mp.blatt.haupt[0].text === 'Andere Website eingeben' && jaDa === 0 && mp.blatt.links.length === 1,
             JSON.stringify({ text: mp.blatt?.text, haupt: mp.blatt?.haupt, links: mp.blatt?.links, jaDa }),
         );
+        // [09.11.2026] Warum: AUFTRAG-123b (N2) — Haupthandlung ohne Globus-Symbol, einzeilig, 56 px hoch (vorher 80 px, zweizeilig)
+        const n2 = await page.evaluate(() => {
+            const k = document.querySelector('#ki-demo-hr-andere-website');
+            const r = k.getBoundingClientRect();
+            const cs = getComputedStyle(k);
+            const range = document.createRange();
+            range.selectNodeContents(k);
+            const tops = new Set([...range.getClientRects()].filter((x) => x.width > 0).map((x) => Math.round(x.top)));
+            return { hoehe: Math.round(r.height * 10) / 10, breite: Math.round(r.width * 10) / 10, svg: k.querySelectorAll('svg').length, zeilen: tops.size, radius: cs.borderTopLeftRadius, schrift: cs.fontSize, text: k.innerText.trim() };
+        });
+        (protokoll.n2 = protokoll.n2 ?? {})[name] = n2;
+        check(`[${name}] N2 409: «Andere Website eingeben» ohne Globus-Symbol, einzeilig, 56 px hoch (gemessen ${n2.hoehe} px, ${n2.zeilen} Zeile(n), Breite ${n2.breite})`, n2.text === 'Andere Website eingeben' && n2.svg === 0 && n2.zeilen === 1 && Math.abs(n2.hoehe - 56) < 0.6, JSON.stringify(n2));
+        // [09.11.2026] Warum: AUFTRAG-123b — bei 375×553 war das 409-Blatt 26 px höher als die Bühne und scrollte als Ganzes (Textlink
+        // halb unter dem Rand); jetzt scrollt nur Eintrag + Meldung (data-blatt-scroll), das Blatt selbst nie
+        check(`[${name}] 409: Blatt ohne eigenes Scrollen (${mp.blatt?.scrollH}/${mp.blatt?.clientH}); reicht die Bühne nicht, scrollt nur Eintrag + Meldung (${JSON.stringify(mp.blatt?.innen)})`, !!mp.blatt && mp.blatt.scrollH <= mp.blatt.clientH + 1, lageText(mp));
+        n2.innen = mp.blatt?.innen;
         await bild('2b-passt-nicht', null);
+        // die gemockte 409-Antwort meldet Chrome selbst als «Failed to load resource … 409 (Conflict)» (Netz, kein Skriptfehler)
+        const ohne409 = () => konsole.filter((k) => !/status of 409 \(Conflict\)/.test(k));
+        // [09.11.2026] Warum: AUFTRAG-123b — Z9.1-Abschluss VOR «Andere Website eingeben» (wie im Normallauf vor «Nochmals testen»):
+        // danach verlässt die Demo den Kompaktmodus und fokussiert das URL-Feld (A-111); liegt es unter dem Fensterrand (375×553),
+        // scrollt der Browser gewollt dorthin (gemessen 344 px) — das ist die Eingabe-Ansicht, nicht mehr die Bühne
+        await abschluss(page, name, breite, ohne409(), z, { anrufe: 0 });
         await page.tap('#ki-demo-hr-andere-website');
         await page.waitForTimeout(600);
         const me = await messe(page);
-        check(`[${name}] 409 → «Andere Website eingeben» führt zur Eingabe (Hero, Konsole)`, me.h1Sichtbar && me.konsoleSichtbar && !me.kompakt, JSON.stringify({ h1: me.h1Sichtbar, konsole: me.konsoleSichtbar }));
-        // die gemockte 409-Antwort meldet Chrome selbst als «Failed to load resource … 409 (Conflict)» (Netz, kein Skriptfehler)
-        await abschluss(page, name, breite, konsole.filter((k) => !/status of 409 \(Conflict\)/.test(k)), z, { anrufe: 0 });
+        check(`[${name}] 409 → «Andere Website eingeben» führt zur Eingabe (Hero, Konsole), keine Konsolenfehler`, me.h1Sichtbar && me.konsoleSichtbar && !me.kompakt && ohne409().length === 0, JSON.stringify({ h1: me.h1Sichtbar, konsole: me.konsoleSichtbar, fehler: ohne409() }));
         protokoll.mobil.push(lauf);
         await ctx.close();
         return frames;
@@ -810,7 +867,37 @@ async function mobilLauf(o) {
         const a = b.querySelector('a[data-ki-demo-anfrage]');
         const tr = titel.getBoundingClientRect();
         const dr = dauer?.getBoundingClientRect();
+        // [09.11.2026] Warum: AUFTRAG-123b (N4) — Haupthandlung und Textlink: Lage, Grösse, Zeilen, Radius, Schrift, Farbe
+        const bcs = getComputedStyle(b);
+        const innenB = b.clientWidth - parseFloat(bcs.paddingLeft) - parseFloat(bcs.paddingRight);
+        const innenMitte = b.getBoundingClientRect().left + b.clientLeft + parseFloat(bcs.paddingLeft) + innenB / 2;
+        const wurzel = parseFloat(getComputedStyle(document.documentElement).fontSize);
+        const zeilen = (el) => {
+            const w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+            const tops = new Set();
+            const range = document.createRange();
+            for (let t = w.nextNode(); t; t = w.nextNode()) {
+                if (!t.textContent.trim()) continue;
+                range.selectNodeContents(t);
+                for (const x of range.getClientRects()) if (x.width > 0) tops.add(Math.round(x.top));
+            }
+            return tops.size;
+        };
+        const info = (el) => {
+            if (!el) return null;
+            const r = el.getBoundingClientRect();
+            const cs = getComputedStyle(el);
+            return { id: el.id || null, tag: el.tagName, text: el.innerText.trim(), top: Math.round(r.top * 10) / 10, bottom: Math.round(r.bottom * 10) / 10, hoehe: Math.round(r.height * 10) / 10, breite: Math.round(r.width * 10) / 10, mitte: Math.round((r.left + r.width / 2) * 10) / 10, zeilen: zeilen(el), radius: cs.borderTopLeftRadius, schrift: cs.fontSize, gewicht: cs.fontWeight, bg: cs.backgroundColor, klassen: String(el.className), href: el.getAttribute('href'), anfrage: el.hasAttribute('data-ki-demo-anfrage'), svg: el.querySelectorAll('svg').length };
+        };
+        const hauptEl = [...b.querySelectorAll('[data-blatt-haupt]')];
+        const linkEl = [...b.querySelectorAll('[data-blatt-link]')];
         return {
+            haupt: hauptEl.map(info),
+            links: linkEl.map(info),
+            zweit: b.querySelectorAll('[data-blatt-zweit]').length,
+            innenB: Math.round(innenB * 10) / 10,
+            innenMitte: Math.round(innenMitte * 10) / 10,
+            sollSchrift: `${Math.round(wurzel * 1.1875 * 1000) / 1000}px`,
             titel: titel.innerText.trim(),
             dauer: dauer ? { text: dauer.innerText.trim(), gleicheZeile: dr.top < tr.bottom && dr.bottom > tr.top, rechts: dr.left > tr.right - 1, schrift: getComputedStyle(dauer).fontSize, tabular: getComputedStyle(dauer).fontVariantNumeric } : null,
             dauerZeile: [...b.querySelectorAll('p')].some((p) => p.innerText.trim().startsWith('Dauer:')),
@@ -826,8 +913,22 @@ async function mobilLauf(o) {
     lauf.ende = ende;
     check(`[${name}] Fokus nach dem Anruf auf dem Blatt (A-122 S7)`, ende.fokusBlatt, JSON.stringify(me.fokus));
     await bild(fehler ? '8-fehler' : '8-ende', fehler ? 'gescheitert' : 'Ende');
+    // [09.11.2026] Warum: AUFTRAG-123b (N4) — statt zwei gleich gewichteter Knöpfe nebeneinander: EINE Haupthandlung (volle
+    // Breite, 56 px, einzeilig, Radius 16 px, Schrift wie die übrigen Blatt-Haupthandlungen), darunter EIN Textlink (zentriert, 44 px)
+    const h0 = ende.haupt[0];
+    const l0 = ende.links[0];
+    const n4Gestalt =
+        ende.haupt.length === 1 && ende.links.length === 1 && ende.zweit === 0 &&
+        Math.abs(h0.breite - ende.innenB) <= 1 && Math.abs(h0.hoehe - 56) < 0.6 && h0.zeilen === 1 && h0.radius === '16px' && h0.schrift === ende.sollSchrift && h0.gewicht === '700' &&
+        l0.top >= h0.bottom - 0.5 && l0.hoehe >= 44 && Math.abs(l0.mitte - ende.innenMitte) <= 1 && l0.zeilen === 1;
+    lauf.n4 = { haupt: h0, link: l0, innenB: ende.innenB, innenMitte: ende.innenMitte, sollSchrift: ende.sollSchrift };
     if (fehler) {
-        check(`[${name}] Z7 Fehler: «Der Anruf hat nicht geklappt», Grund, «Nochmals versuchen» + «Angebot anfragen» nebeneinander`, ende.titel === 'Der Anruf hat nicht geklappt' && ende.text.includes('Versuchen Sie es gleich nochmals.') && ende.knoepfe[0] === 'Nochmals versuchen' && ende.knoepfe[1] === 'Angebot anfragen' && ende.gleicheZeile, JSON.stringify(ende));
+        check(`[${name}] Z7 Fehler: «Der Anruf hat nicht geklappt», Grund als Hilfszeile`, ende.titel === 'Der Anruf hat nicht geklappt' && ende.text.includes('Versuchen Sie es gleich nochmals.'), JSON.stringify(ende));
+        check(
+            `[${name}] N4 Fehler: Haupthandlung «Nochmals versuchen» (Markengrün, ${h0?.breite}×${h0?.hoehe} px, ${h0?.zeilen} Zeile, Radius ${h0?.radius}), darunter Textlink «Angebot anfragen» (natives <a> #anfrage, ${l0?.hoehe} px, zentriert)`,
+            n4Gestalt && h0.id === 'ki-demo-nochmals-testen' && h0.tag === 'BUTTON' && h0.text === 'Nochmals versuchen' && /\bbg-primary\b/.test(h0.klassen) && l0.tag === 'A' && l0.anfrage && l0.href === '#anfrage' && l0.text === 'Angebot anfragen',
+            JSON.stringify({ haupt: h0, link: l0, innenB: ende.innenB, innenMitte: ende.innenMitte, sollSchrift: ende.sollSchrift, zweit: ende.zweit }),
+        );
         await page.tap('#ki-demo-nochmals-testen');
         await page.waitForTimeout(800);
         const mn = await mess('Formular (nach «Nochmals versuchen»)');
@@ -836,9 +937,14 @@ async function mobilLauf(o) {
         await bild('9-nochmals-formular', null);
     } else {
         check(
-            `[${name}] Z7 Ende: Titelzeile «Ihre Zusammenfassung» mit «2:51 Min.» rechts (14 px, tabular-nums), keine eigene Dauer-Zeile, höchstens 6 Zeilen + «Mehr anzeigen», «Nochmals testen» + «Angebot anfragen»`,
-            ende.titel === 'Ihre Zusammenfassung' && ende.dauer?.text === '2:51 Min.' && ende.dauer.gleicheZeile && ende.dauer.rechts && ende.dauer.tabular.includes('tabular-nums') && !ende.dauerZeile && ende.zfZeilen <= 6 && ende.mehr && ende.knoepfe[0] === 'Nochmals testen' && ende.knoepfe[1] === 'Angebot anfragen' && ende.gleicheZeile && ende.href === '#anfrage',
+            `[${name}] Z7 Ende: Titelzeile «Ihre Zusammenfassung» mit «2:51 Min.» rechts (14 px, tabular-nums), keine eigene Dauer-Zeile, höchstens 6 Zeilen + «Mehr anzeigen»`,
+            ende.titel === 'Ihre Zusammenfassung' && ende.dauer?.text === '2:51 Min.' && ende.dauer.gleicheZeile && ende.dauer.rechts && ende.dauer.tabular.includes('tabular-nums') && !ende.dauerZeile && ende.zfZeilen <= 6 && ende.mehr,
             JSON.stringify(ende),
+        );
+        check(
+            `[${name}] N4 Ende: Haupthandlung «Angebot anfragen» (natives <a> #anfrage, #1f7a35, ${h0?.breite}×${h0?.hoehe} px = volle Breite, ${h0?.zeilen} Zeile, Radius ${h0?.radius}, Schrift ${h0?.schrift}), darunter Textlink «Nochmals testen» (${l0?.hoehe} px, zentriert)`,
+            n4Gestalt && h0.tag === 'A' && h0.anfrage && h0.href === '#anfrage' && h0.text === 'Angebot anfragen' && h0.bg === 'rgb(31, 122, 53)' && l0.id === 'ki-demo-nochmals-testen' && l0.tag === 'BUTTON' && l0.text === 'Nochmals testen',
+            JSON.stringify({ haupt: h0, link: l0, innenB: ende.innenB, innenMitte: ende.innenMitte, sollSchrift: ende.sollSchrift, zweit: ende.zweit }),
         );
         await page.tap('#ki-demo-mehr');
         await page.waitForTimeout(400);
@@ -848,9 +954,28 @@ async function mobilLauf(o) {
             return { voll: p.scrollHeight <= p.clientHeight + 1, zeilen: Math.round(p.getBoundingClientRect().height / parseFloat(getComputedStyle(p).lineHeight)) };
         });
         check(`[${name}] Z7: «Mehr anzeigen» — Text vollständig, Blatt höchstens Bühne, unten bündig`, offen.voll && offen.zeilen > 6 && mm.blatt.hoehe <= mm.buehne.hoehe + 0.5, `${JSON.stringify(offen)} · ${lageText(mm)}`);
+        // [09.11.2026] Warum: AUFTRAG-123b (N4) — nach «Mehr anzeigen» scrollt nur der Kasten; Haupthandlung und Textlink bleiben ganz im Bild
+        const hm = mm.blatt?.haupt.find((h) => h.text === 'Angebot anfragen');
+        const lm = mm.blatt?.links.find((l) => l.id === 'ki-demo-nochmals-testen');
+        check(
+            `[${name}] N4: nach «Mehr anzeigen» scrollt nur der Kasten; «Angebot anfragen» (unten ${hm?.bottom}) und «Nochmals testen» (unten ${lm?.bottom}) ganz im Bild (Fenster ${mm.innerHeight})`,
+            !!hm && !!lm && hm.sichtbar && lm.sichtbar && hm.top >= mm.blatt.top && lm.bottom <= Math.min(mm.blatt.bottom, mm.innerHeight) + 0.5 && mm.blatt.scrollH <= mm.blatt.clientH + 1,
+            `${lageText(mm)} · haupt ${JSON.stringify(hm)} · link ${JSON.stringify(lm)} · innen ${JSON.stringify(mm.blatt?.innen)}`,
+        );
         await bild('9-mehr', null);
     }
     await abschluss(page, name, breite, konsole, z, { anrufe: 1 });
+    if (!fehler && fall === 'normal' && treffer === 1) {
+        // [09.11.2026] Warum: AUFTRAG-123b (N4) — der Link bleibt ein natives <a> mit Hash und belegt die Firma vor (sessionStorage →
+        // Formular «Assistent anfragen» liest beim hashchange). Nach abschluss(): der Sprung zu #anfrage scrollt gewollt.
+        await page.tap('a[data-ki-demo-anfrage]');
+        await page.waitForTimeout(700);
+        const anfrage = await page.evaluate(() => ({ hash: location.hash, firma: document.querySelector('#anfrage-firma')?.value ?? null, scrollY: Math.round(scrollY) }));
+        lauf.anfrage = anfrage;
+        check(`[${name}] N4: «Angebot anfragen» springt zu #anfrage und belegt dort «Firma» mit «Beispiel AG» vor`, anfrage.hash === '#anfrage' && anfrage.firma === 'Beispiel AG' && anfrage.scrollY > 0, JSON.stringify(anfrage));
+        await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
+        await page.waitForTimeout(300);
+    }
     if (!fehler) {
         await page.tap('#ki-demo-nochmals-testen');
         await page.waitForTimeout(600);
@@ -931,8 +1056,19 @@ async function pruefeFormular(page, name, m, hoehe) {
 async function abschluss(page, name, breite, konsole, z, { anrufe }) {
     const fin = await messe(page);
     const clsListe = await page.evaluate(() => window.__cls);
-    const cls = Math.round(clsListe.reduce((a, b) => a + b.wert, 0) * 10000) / 10000;
-    check(`[${name}] Z9.1: scrollY im ganzen Ablauf 0 (max ${fin.maxScrollY}), kein waagrechtes Scrollen, CLS ${cls}`, fin.maxScrollY === 0 && fin.scrollWidth <= breite && cls === 0, `maxScrollY ${fin.maxScrollY}, scrollWidth ${fin.scrollWidth}, CLS ${cls} ${JSON.stringify(clsListe).slice(0, 600)}`);
+    const clsRoh = clsListe.reduce((a, b) => a + b.wert, 0);
+    const cls = Math.round(clsRoh * 10000) / 10000;
+    // [09.11.2026] Warum: AUFTRAG-123b (N5) — bekannter Telefon-Shift (O1, Bestand): alle Quellen im Telefon und Summe ≤ 0,001 → INFO
+    const bekannt = clsRoh > 0 && clsRoh <= CLS_BEKANNT_MAX && clsListe.every((e) => e.imTelefon?.length > 0 && e.imTelefon.length === e.quellen.length && e.imTelefon.every(Boolean));
+    if (bekannt) {
+        console.log(`INFO  [${name}] bekannt (Bestand Telefon-Ansicht, O1): CLS ${clsRoh.toFixed(6)}, Quellen ${JSON.stringify(clsListe.map((e) => e.quellen))}`);
+        (protokoll.infoBekannt = protokoll.infoBekannt ?? []).push({ lauf: name, cls: clsRoh, eintraege: clsListe });
+    }
+    check(
+        `[${name}] Z9.1: scrollY im ganzen Ablauf 0 (max ${fin.maxScrollY}), kein waagrechtes Scrollen, CLS ${cls}${bekannt ? ' — INFO bekannt (Bestand Telefon-Ansicht, O1)' : ''}`,
+        fin.maxScrollY === 0 && fin.scrollWidth <= breite && (cls === 0 || bekannt),
+        `maxScrollY ${fin.maxScrollY}, scrollWidth ${fin.scrollWidth}, CLS ${cls} ${JSON.stringify(clsListe).slice(0, 600)}`,
+    );
     check(`[${name}] keine Konsolenfehler, keine ungemockten Demo-Aufrufe, ${anrufe} (gemockte) Anruf-Anfrage(n)`, konsole.length === 0 && z.fremd.length === 0 && z.anrufe === anrufe, `${konsole.slice(0, 3).join(' | ')} ${z.fremd.join(' ')} Anrufe ${z.anrufe}`);
 }
 
@@ -1221,6 +1357,21 @@ try {
             }
             if (soll(360, 640)) await mobilLauf({ breite: 360, hoehe: 640, treffer: 5, shots: true });
             if (soll(375, 553)) await mobilLauf({ breite: 375, hoehe: 553, treffer: 5, shots: true });
+            // [09.11.2026] Warum: AUFTRAG-123b — N2: 409 auch bei 360, 375 und 430 px (390 oben); N3: Suche auch bei 360 px;
+            // N4: Ende und Fehler bei 360×640, 375×553 und 390×664 je hell und dunkel (fehlende Kombinationen hier)
+            if (soll(390, 664)) await mobilLauf({ breite: 390, hoehe: 664, treffer: 1, theme: 'dark', fehler: true, shots: true });
+            for (const [b, h] of [
+                [360, 640],
+                [375, 553],
+            ])
+                if (soll(b, h)) {
+                    await mobilLauf({ breite: b, hoehe: h, treffer: 1, fehler: true, shots: true });
+                    await mobilLauf({ breite: b, hoehe: h, treffer: 1, theme: 'dark', shots: true });
+                    await mobilLauf({ breite: b, hoehe: h, treffer: 1, theme: 'dark', fehler: true, shots: true });
+                    await mobilLauf({ breite: b, hoehe: h, treffer: 1, fall: 'passt_nicht', shots: true });
+                }
+            if (soll(360, 640)) await mobilLauf({ breite: 360, hoehe: 640, treffer: 1, fall: 'suche', shots: true });
+            if (soll(430, 739)) await mobilLauf({ breite: 430, hoehe: 739, treffer: 1, fall: 'passt_nicht', shots: true });
             if (soll(768, 1024)) {
                 await mobilLauf({ breite: 768, hoehe: 1024, treffer: 1, shots: true, name: 'tablet-768x1024-1t-hell' });
                 const t = protokoll.mobil.find((l) => l.name === 'tablet-768x1024-1t-hell');
@@ -1306,7 +1457,7 @@ protokoll.tabelle = tabelle;
 writeFileSync(path.join(SCREENS, 'browser-test.json'), JSON.stringify(protokoll, null, 2));
 if (tabelle.length) {
     const md = [
-        '# A-123 Messtabelle (Playwright, Produktionsbuild :3011, /api/demo/** gemockt)',
+        '# A-123b Messtabelle (Playwright, Produktionsbuild :3011, /api/demo/** gemockt; Schwelle Telefon-Skala 0,36)',
         '',
         'Werte in px aus getBoundingClientRect(); Telefon-Grundgrösse = Layout-Masse ohne Transform (offsetWidth × offsetHeight), Skala = gemessene Höhe ÷ Grundhöhe.',
         '',

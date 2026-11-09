@@ -127,6 +127,11 @@ export const HR_KOMPAKT = {
     herkunft: 'Aus dem Handelsregister (Zefix)',
     /** T3: aria-label je Trefferzeile («{Name}, {Sitz}: Das ist meine Firma») */
     zeileLabel: (name: string, sitz: string) => `${name}, ${sitz}: Das ist meine Firma`,
+    /**
+     * [09.11.2026] Warum: AUFTRAG-123b (N3, wortgleich vom Manager) — Platzhalter des Suchfelds im Kompaktmodus; der lange
+     * Desktop-Platzhalter «z. B. Muster AG oder CHE-123.456.789» war mobil am Ende abgeschnitten (A-123 O6).
+     */
+    platzhalter: 'z. B. Muster AG',
 } as const;
 
 export const HR_TEXT = {

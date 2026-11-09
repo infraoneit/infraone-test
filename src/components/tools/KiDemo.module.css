@@ -113,7 +113,8 @@
         /*
          * [09.11.2026] Warum: AUFTRAG-123 (Z2) — liegt ein Blatt in der Bühne, verkleinert sich das Telefon weich (wie iOS bei
          * einem Sheet), bis es ganz darüber passt: --telefon-skala setzt KiDemo.tsx (ResizeObserver; ohne Blatt 1). Nie
-         * angeschnitten; unter 0,32 blendet es aus (data-telefon-aus). Transform verschiebt kein Layout.
+         * angeschnitten; unter 0,36 blendet es aus (data-telefon-aus; [09.11.2026] Warum: AUFTRAG-123b N1 — vorher 0,32,
+         * Briefmarke bei 0,33–0,34). Transform verschiebt kein Layout.
          */
         transform: scale(var(--telefon-skala, 1));
         transform-origin: top center;
@@ -188,6 +189,15 @@
     .buehne[data-kompakt='true'] .aktionKarte[data-blatt='pruefen'] {
         display: none;
     }
+    /*
+     * [09.11.2026] Warum: AUFTRAG-123b (N2/N4) — Haupthandlung des Blatts fest 56 px hoch, Radius 16 px (Z3), auch wo die Seite
+     * die Grundschrift verkleinert (1rem = 14 px unter 375 px: dort waren es 49 px hoch, Radius 14 px). Bricht ein Text um,
+     * darf der Knopf wachsen (min-height). Gilt für alle Blatt-Haupthandlungen, damit sie gleich hoch bleiben.
+     */
+    .buehne[data-kompakt='true'] [data-blatt-haupt] {
+        min-height: 56px;
+        border-radius: 16px;
+    }
     /* K3.1: nur die Trefferliste scrollt (Flex 1 1 auto, min-height 0); 2 px Rand, damit Fokus- und Auswahlring nicht abgeschnitten werden */
     .hrListe {
         flex: 1 1 auto;
@@ -213,6 +223,34 @@
         background: linear-gradient(to bottom, transparent, rgba(0, 0, 0, 0.7));
     }
     .hrListe[data-ueberlauf='true']::after {
+        opacity: 1;
+    }
+    /*
+     * [09.11.2026] Warum: AUFTRAG-123b (gemessen bei 375×553, 409) — Firmen-Blatt mit einem Treffer: reicht die Bühne nicht,
+     * scrollt nur Eintrag + Meldung (Haupthandlung und Textlink bleiben im Bild), mit Schattenrand unten wie die Trefferliste
+     * (data-ueberlauf aus Handelsregister.tsx). Passt der Inhalt, hat die Hülle keine Wirkung (kein Innenabstand, Schatten aus).
+     */
+    .blattRest {
+        min-height: 0;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+    }
+    .blattRest::after {
+        content: '';
+        position: sticky;
+        bottom: 0;
+        display: block;
+        height: 1.25rem;
+        margin-top: -1.25rem;
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 0.2s ease;
+        background: linear-gradient(to bottom, transparent, rgba(10, 18, 10, 0.22));
+    }
+    :global(.dark) .blattRest::after {
+        background: linear-gradient(to bottom, transparent, rgba(0, 0, 0, 0.7));
+    }
+    .blattRest[data-ueberlauf='true']::after {
         opacity: 1;
     }
     /* K2/K4: mobil zeigt die Statuszeile nur noch den Stand (kein Sprung zum Telefon mehr) */

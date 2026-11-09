@@ -390,9 +390,10 @@ export function Handelsregister({ scanId, website, start, onNochmals, onBestaeti
                 {passt[4]}
             </p>
         );
+        // [09.11.2026] Warum: AUFTRAG-123b (N2) — ohne Globus-Symbol: mit Symbol brach «Andere Website eingeben» bei 375–390 px
+        // zweizeilig um (Knopf 80 px, A-123 O5); ohne passt es einzeilig (56 px) ab 360 px. Desktop-Zweig unverändert.
         const andereWebsiteKnopf = (
             <button type="button" onClick={onAndereWebsite} className={KNOPF} id="ki-demo-hr-andere-website" data-blatt-haupt="">
-                <Globe className="w-5 h-5" aria-hidden="true" />
                 {HR_SCHRITT.andereWebsite}
             </button>
         );
@@ -435,16 +436,24 @@ export function Handelsregister({ scanId, website, start, onNochmals, onBestaeti
 
                 {einer && (
                     <>
-                        <div data-hr-eintrag="" data-uid={aktive[0].uid} className="mt-4 flex-shrink-0 rounded-2xl border border-border bg-surface px-4 py-3">
-                            <p data-hr-name="" className="line-clamp-2 text-[1.0625rem] font-semibold leading-snug text-text-primary">
-                                {aktive[0].name}
-                            </p>
-                            <p className="mt-0.5 text-sm text-text-secondary tabular-nums">
-                                {aktive[0].sitz || 'unbekannt'} · {aktive[0].uid_formatiert}
-                            </p>
+                        {/*
+                         * [09.11.2026] Warum: AUFTRAG-123b (N2, gemessen) — bei 375×553 war das 409-Blatt (Eintrag + Meldung) 26 px höher als
+                         * die Bühne; das Blatt scrollte als Ganzes und «Nein, andere Firma suchen» lag halb unter dem Rand. Wie beim Ende
+                         * (Kasten scrollt allein) scrollt hier nur Eintrag + Meldung, Haupthandlung und Textlink bleiben im Bild; Schattenrand
+                         * unten wie bei der Trefferliste (listeRef, data-ueberlauf). Passt der Inhalt (Normalfall), ändert die Hülle nichts.
+                         */}
+                        <div ref={listeRef} data-blatt-scroll="" className={styles.blattRest}>
+                            <div data-hr-eintrag="" data-uid={aktive[0].uid} className="mt-4 flex-shrink-0 rounded-2xl border border-border bg-surface px-4 py-3">
+                                <p data-hr-name="" className="line-clamp-2 text-[1.0625rem] font-semibold leading-snug text-text-primary">
+                                    {aktive[0].name}
+                                </p>
+                                <p className="mt-0.5 text-sm text-text-secondary tabular-nums">
+                                    {aktive[0].sitz || 'unbekannt'} · {aktive[0].uid_formatiert}
+                                </p>
+                            </div>
+                            {passtMeldung}
+                            {fehlerZeile}
                         </div>
-                        {passtMeldung}
-                        {fehlerZeile}
                         <div className="mt-4 flex-shrink-0">
                             {passt ? (
                                 andereWebsiteKnopf
@@ -510,7 +519,9 @@ export function Handelsregister({ scanId, website, start, onNochmals, onBestaeti
                                 onChange={(e) => setSuche(e.target.value)}
                                 maxLength={120}
                                 autoComplete="organization"
-                                placeholder="z. B. Muster AG oder CHE-123.456.789"
+                                // [09.11.2026] Warum: AUFTRAG-123b (N3) — der lange Platzhalter war bei 390 px am Ende abgeschnitten
+                                // (16-px-Schrift gegen iOS-Zoom, A-123 O6); mobil kurz, Beschriftung «Firmenname oder UID» bleibt
+                                placeholder={HR_KOMPAKT.platzhalter}
                                 aria-describedby="ki-demo-hr-versuche"
                                 className="w-full h-[48px] pl-11 pr-3 rounded-xl border border-border bg-background text-text-primary text-base placeholder:text-text-secondary/70 focus:outline-none focus:border-primary"
                             />
