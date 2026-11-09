@@ -29,7 +29,7 @@ export const ANRUF_VON = process.env.NEXT_PUBLIC_DEMO_ANRUF_VON?.trim() || '+41 
 
 /**
  * [09.11.2026] Warum: AUFTRAG-121 (K3.4) — Grund-Text bei «fehler», wie im Telefon-Bildschirm; die mobile
- * Aktionskarte (Telefon dort nicht gerendert) nutzt denselben Text statt einer Kopie.
+ * Aktionskarte (Ende-Ansicht, AUFTRAG-122: über dem Telefon) nutzt denselben Text statt einer Kopie.
  */
 export function fehlerGrundText(grund: string | null | undefined): string {
     return grund === 'limit' ? 'Heute keine weiteren Testanrufe an diese Nummer.' : grund === GRUND_KEINE_RUECKMELDUNG ? 'Die Statusanzeige ist stehen geblieben.' : 'Versuchen Sie es gleich nochmals.';

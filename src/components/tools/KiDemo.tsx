@@ -86,8 +86,8 @@ const GRUEN_LEERLAUF = '#4CAF50';
 /*
  * [08.11.2026] Warum: AUFTRAG-120 (Z2) — auf dem Handy «checkte niemand», was nach dem Scan zu tun ist. Die
  * Aktionskarte sagt mobil in einer Zeile über der Überschrift, wo der Besucher steht. Texte wortgleich aus dem Auftrag.
- * [09.11.2026] Warum: AUFTRAG-121 (K3/K4) — mobil gibt es während des Anrufs kein Telefon mehr unter der Karte; der
- * Hinweis «… im Telefon unten» wäre falsch. Daher wortgleich K3.3/K3.4: «Testanruf läuft» / «Testanruf beendet».
+ * [09.11.2026] Warum: AUFTRAG-121 (K3/K4) — wortgleich K3.3/K3.4: «Testanruf läuft» / «Testanruf beendet» (ohne
+ * «… im Telefon unten»: seit AUFTRAG-122 liegt das Telefon mobil als Bühne hinter der Karte, nicht darunter).
  * Der Statuszeilen-Hinweis «Bitte Firma bestätigen» (A-120, Z4) entfällt: die Karte ist immer im Bild.
  */
 const SCHRITT_FUEHRUNG = {
@@ -429,6 +429,8 @@ export function KiDemo({ children, turnstileSiteKey, begruessungNachStimme = fal
     const telefonRef = useRef<HTMLDivElement>(null);
     const buehneRef = useRef<HTMLDivElement>(null);
     const aktionRef = useRef<HTMLElement>(null);
+    // AUFTRAG-122 (S7): mobil nach dem Anruf-Knopf Fokus auf die Karte, sobald sie wieder gerendert ist
+    const fokusNachAnruf = useRef(false);
     const [aktionMin, setAktionMin] = useState(0);
     const turnstileRef = useRef<HTMLDivElement>(null);
     const turnstileWidget = useRef<string | null>(null);
@@ -752,17 +754,17 @@ export function KiDemo({ children, turnstileSiteKey, begruessungNachStimme = fal
      * Desktop: Das Telefon läuft ab lg mit (position: sticky, siehe CSS).
      */
     /*
-     * [09.11.2026] Warum: AUFTRAG-121 (K2) — mobil ist das Telefon ab dem Scan nicht gerendert (kein IntersectionObserver
-     * auf ein Telefon, das es nicht gibt); kommt es zurück (Eingabe), wird es neu beobachtet. Am Desktop immer gerendert.
+     * [09.11.2026] Warum: AUFTRAG-122 Telefon als Bühne, Karte darüber — das Telefon ist mobil wieder immer gerendert
+     * (A-121 hatte es im Kompaktmodus weggelassen) und wird wieder beobachtet; im Kompaktmodus steht die Statuszeile
+     * trotzdem immer (siehe statusSichtbar).
      */
     const istMobil = useSyncExternalStore(mobilAbonnieren, istMobilJetzt, () => false);
     const kompakt = istMobil && zustand !== 'eingabe';
-    const telefonDa = !kompakt;
     const [sicht, setSicht] = useState({ telefon: true, oben: false, buehne: true });
     useEffect(() => {
         const tel = telefonRef.current;
         const buehne = buehneRef.current;
-        // AUFTRAG-121 (K2): die Bühne wird immer beobachtet (Statuszeile weg ausserhalb der Demo), das Telefon nur, wenn es gerendert ist
+        // AUFTRAG-121 (K2): die Bühne wird immer beobachtet (Statuszeile weg ausserhalb der Demo)
         if (!buehne || typeof IntersectionObserver === 'undefined') return;
         // Header mobil: 64 px + 16 px Abstand oben
         const rand = '-80px 0px 0px 0px';
@@ -783,7 +785,7 @@ export function KiDemo({ children, turnstileSiteKey, begruessungNachStimme = fal
             ioTel.disconnect();
             ioBuehne.disconnect();
         };
-    }, [telefonDa]);
+    }, []);
 
     const zumTelefon = () => {
         const el = telefonRef.current;
@@ -929,8 +931,9 @@ export function KiDemo({ children, turnstileSiteKey, begruessungNachStimme = fal
         }
         // Sofortige Rückmeldung: der Button zeigt den Wartezustand, solange der Auftrag angelegt wird
         setZustand('wartend');
-        // AUFTRAG-121 (K7): mobil ersetzt die Ablauf-Ansicht das Formular — Fokus auf die Karte statt ins Leere (ohne Scrollen)
-        if (istMobilJetzt()) setTimeout(() => aktionRef.current?.focus({ preventScroll: true }), 0);
+        // AUFTRAG-121 (K7): mobil Fokus auf die Karte statt ins Leere (ohne Scrollen). [09.11.2026] Warum: AUFTRAG-122 (S7) —
+        // während des Anrufs gibt es mobil keine Karte; der Fokus kommt auf die Karte, sobald sie wieder da ist (Ende, Fehler)
+        if (istMobilJetzt()) fokusNachAnruf.current = true;
         // Turnstile-Token gilt nur einmal; das nächste «bereit» rendert ein frisches Widget
         const token = turnstileToken;
         setTurnstileToken(null);
@@ -1158,6 +1161,19 @@ export function KiDemo({ children, turnstileSiteKey, begruessungNachStimme = fal
     ];
     const imAnruf = zustand === 'wartend' || zustand === 'waehlt' || zustand === 'verbunden';
 
+    /*
+     * [09.11.2026] Warum: AUFTRAG-122 Telefon als Bühne, Karte darüber (S3) — mobil ist die Handlungskarte in den
+     * passiven Phasen nicht gerendert: Vollscan nach der Bestätigung (ausser bei einem Fehler im Vollscan) und Anruf.
+     * Dann zeigt allein das Telefon den Stand. Am Desktop immer gerendert (ab dem Scan).
+     */
+    const karteDa = zustand !== 'eingabe' && !(kompakt && ((zustand === 'scan' && hrOk && !vollFehler) || imAnruf));
+    useEffect(() => {
+        if (!kompakt || !karteDa || !fokusNachAnruf.current) return;
+        fokusNachAnruf.current = false;
+        const t = setTimeout(() => aktionRef.current?.focus({ preventScroll: true }), 0);
+        return () => clearTimeout(t);
+    }, [kompakt, karteDa]);
+
     /* AUFTRAG-100: Statuszeile mobil — oben der Schritt, darunter der letzte Fund bzw. der Anrufstand */
     // AUFTRAG-121 (K2): `fortschritt` («3/8») steht mobil rechts in der Statuszeile statt «Zum Telefon»
     const statusZeile: { kopf: string; text: string; zeichen: 'scan' | 'farbe' | 'puls' | 'welle' | 'ok' | 'fehler'; farbe?: string; fortschritt?: string } | null = (() => {
@@ -1193,7 +1209,7 @@ export function KiDemo({ children, turnstileSiteKey, begruessungNachStimme = fal
                 return { kopf: 'Testanruf', text: fehlerTitel(auftrag?.grund), zeichen: 'fehler' };
         }
     })();
-    // AUFTRAG-121 (K2/K4): im Kompaktmodus steht die Statuszeile immer (es gibt kein Telefon, das sichtbar sein könnte)
+    // AUFTRAG-121 (K2/K4): im Kompaktmodus steht die Statuszeile immer (AUFTRAG-122: auch mit dem Telefon als Bühne im Bild — sie zeigt Schritt und n/8)
     const statusSichtbar = !!statusZeile && sicht.buehne && (kompakt || !sicht.telefon);
 
     /*
@@ -1212,7 +1228,7 @@ export function KiDemo({ children, turnstileSiteKey, begruessungNachStimme = fal
               ? SCHRITT_FUEHRUNG.beendet
               : null;
     const schrittZeile = (text: string) => (
-        <p data-ki-demo-schritt="" className="lg:hidden mb-3 flex items-start gap-2 text-sm leading-5 font-medium text-text-secondary">
+        <p data-ki-demo-schritt="" className="lg:hidden mb-2.5 flex items-start gap-2 text-sm leading-5 font-medium text-text-secondary">
             <span className="mt-1.5 w-2 h-2 flex-shrink-0 rounded-full bg-primary" aria-hidden="true" />
             {text}
         </p>
@@ -1221,10 +1237,11 @@ export function KiDemo({ children, turnstileSiteKey, begruessungNachStimme = fal
 
     /*
      * [09.11.2026] Warum: AUFTRAG-121 (K3.3) — die Ablauf-Liste («Auftrag angenommen · Ihr Telefon klingelt …») als
-     * eine Funktion: am Desktop unter dem Formular wie bisher, mobil in der Ansicht «Anruf läuft» (keine Doppelung).
+     * eine Funktion. AUFTRAG-122 (S3): nur noch am Desktop unter dem Formular; mobil zeigt während des Anrufs das Telefon
+     * den Stand (die A-121-Ansicht «Anruf läuft» ist entfallen).
      */
-    const ablaufListe = (kompaktListe: boolean) => (
-        <ol className={kompaktListe ? 'mt-3 space-y-2.5' : 'mt-6 space-y-3.5'} aria-label="Ablauf des Testanrufs">
+    const ablaufListe = () => (
+        <ol className="mt-6 space-y-3.5" aria-label="Ablauf des Testanrufs">
             {verlauf.map((v) => (
                 <li key={v.titel} className="flex items-start gap-3">
                     <span
@@ -1280,8 +1297,8 @@ export function KiDemo({ children, turnstileSiteKey, begruessungNachStimme = fal
                                         {zustand === 'fehler' ? fehlerTitel(auftrag?.grund) : `${kartenAnzeige?.name ?? 'Ihr Assistent'} ruft Sie an`}
                                     </h2>
                                     {hrBestaetigt && !platzhalter && bestaetigtZeile(hrBestaetigt)}
-                                    <form onSubmit={starteAnruf} noValidate className={kompakt ? 'mt-3 flex flex-1 flex-col gap-3' : 'mt-5 space-y-5'}>
-                                        <fieldset disabled={zustand !== 'bereit' || !!anrufSperre} className={kompakt ? 'min-w-0 space-y-3 disabled:opacity-80' : 'min-w-0 space-y-5 disabled:opacity-80'}>
+                                    <form onSubmit={starteAnruf} noValidate className={kompakt ? 'mt-2.5 flex flex-1 flex-col gap-2.5' : 'mt-5 space-y-5'}>
+                                        <fieldset disabled={zustand !== 'bereit' || !!anrufSperre} className={kompakt ? 'min-w-0 space-y-2.5 disabled:opacity-80' : 'min-w-0 space-y-5 disabled:opacity-80'}>
                                             <div role="radiogroup" aria-labelledby="ki-demo-sprache-titel">
                                                 <p id="ki-demo-sprache-titel" className="text-sm font-medium text-text-primary mb-2">
                                                     Sprache
@@ -1400,17 +1417,20 @@ export function KiDemo({ children, turnstileSiteKey, begruessungNachStimme = fal
                                                     type={zustand === 'bereit' ? 'submit' : 'button'}
                                                     onClick={zustand === 'fehler' ? nochmals : undefined}
                                                     id="ki-demo-anruf-knopf"
-                                                    zweizeilig
+                                                    zweizeilig={!kompakt}
                                                     gesperrt={zustand === 'bereit' && !!anrufSperre}
                                                 />
                                             );
-                                            // AUFTRAG-121 (K3.2): mobil steht der Knopf unten in der Karte (Daumenbereich)
+                                            // AUFTRAG-121 (K3.2): mobil steht der Knopf unten in der Karte (Daumenbereich).
+                                            // [09.11.2026] Warum: AUFTRAG-122 (S4.2) — mobil zeigt die Karte den Knopf nur noch in «bereit» (einzeilig «Jetzt
+                                            // KI-Anruf erhalten»; die Anruf-Zustände zeigt das Telefon): keine reservierte zweite Zeile, damit über der Karte
+                                            // mehr Telefon sichtbar bleibt. Ebenso die Abstände im Formular mobil 10 statt 12 px (Texte und Felder gleich).
                                             return kompakt ? <div className="mt-auto">{knopf}</div> : knopf;
                                         })()}
                                     </form>
     
-                                    {/* AUFTRAG-121 (K3.2): mobil erscheint die Ablauf-Liste erst nach dem Klick (eigene Ansicht, ablaufListe) */}
-                                    {!kompakt && ablaufListe(false)}
+                                    {/* AUFTRAG-121 (K3.2)/AUFTRAG-122 (S3): mobil keine Ablauf-Liste — den Anruf zeigt das Telefon */}
+                                    {!kompakt && ablaufListe()}
                                     {zustand === 'verbunden' && (
                                         <span className="sr-only" aria-label={`Gesprächsdauer ${dauerAnzeige(dauerSek)}`}>
                                             {dauerAnzeige(dauerSek)}
@@ -1438,43 +1458,10 @@ export function KiDemo({ children, turnstileSiteKey, begruessungNachStimme = fal
     };
 
     /*
-     * [09.11.2026] Warum: AUFTRAG-121 (K3) — Ansichten der Aktionskarte im Kompaktmodus (nur Handy). Das Telefon ist
-     * dort nicht gerendert; seine Aufgaben (Stand, Ergebnis) übernehmen diese Ansichten und die Statuszeile.
+     * [09.11.2026] Warum: AUFTRAG-121 (K3) — Ansicht «Ende» der Aktionskarte im Kompaktmodus (nur Handy).
+     * AUFTRAG-122 (S3): die A-121-Ansichten «Vorbereitung» (Vollscan) und «Anruf läuft» sind entfallen — in diesen
+     * passiven Phasen ist mobil keine Karte gerendert, das Telefon (Bühne) zeigt Scan-Schritte bzw. den Anruf.
      */
-    /** Kompakt, während die Karte nach der Bestätigung vorbereitet wird (Vollscan läuft) */
-    const kompaktVorbereitung = () => (
-        <>
-            <h2 id="ki-demo-anruf-titel" className="text-xl font-bold text-text-secondary tracking-tight">
-                Ihr Testanruf
-            </h2>
-            {hrBestaetigt && bestaetigtZeile(hrBestaetigt)}
-            <p role="status" className="mt-4 flex items-center gap-3 rounded-2xl bg-surface border border-border px-4 py-4 text-sm text-text-secondary">
-                <Loader2 className="w-5 h-5 flex-shrink-0 text-primary motion-safe:animate-spin" aria-hidden="true" />
-                Sobald Ihr Assistent bereit ist, wählen Sie hier Sprache und Nummer.
-            </p>
-        </>
-    );
-
-    /** K3.3: Anruf läuft — Ablauf-Liste mit Stand, Dauer m:ss, Absender, darunter der Statusknopf */
-    const kompaktAnruf = () => (
-        <>
-            <h2 id="ki-demo-anruf-titel" className="text-xl font-bold text-text-primary tracking-tight">
-                {`${kartenAnzeige?.name ?? 'Ihr Assistent'} ruft Sie an`}
-            </h2>
-            {ablaufListe(true)}
-            <p className="mt-4 flex items-center gap-2 text-sm text-text-secondary" data-ki-demo-dauer="">
-                <Clock className="w-4 h-4 flex-shrink-0" aria-hidden="true" />
-                Dauer <span className="font-semibold text-text-primary tabular-nums">{dauerAnzeige(dauerSek)}</span>
-            </p>
-            <p className="mt-1 text-xs text-text-secondary" data-ki-demo-anruf-von="">
-                Der Anruf kommt von {ANRUF_VON}.
-            </p>
-            <div className="mt-auto pt-3">
-                <PrimaerKnopf zustand={zustand} name={kartenAnzeige?.name ?? 'Ihr Assistent'} type="button" id="ki-demo-anruf-knopf" zweizeilig />
-            </div>
-        </>
-    );
-
     /** K3.4: Anruf beendet — Zusammenfassung (acht Zeilen, «Mehr anzeigen»), Nochmals testen + Angebot anfragen; Fehlerfall */
     const kompaktEnde = () => {
         const gescheitert = zustand === 'fehler';
@@ -1659,8 +1646,8 @@ export function KiDemo({ children, turnstileSiteKey, begruessungNachStimme = fal
             </div>
 
             {/* Lebendes Telefon — ab lg läuft es während Scan, Karte und Anruf mit (sticky bis zum Ende der Bühne).
-                AUFTRAG-121 (K2): mobil ab dem Scan nicht gerendert (Kompaktmodus); Stand und Ergebnis zeigt die Aktionskarte. */}
-            {telefonDa && (
+                [09.11.2026] Warum: AUFTRAG-122 Telefon als Bühne, Karte darüber — mobil wieder immer gerendert; im
+                Kompaktmodus füllt es die Bühne (CSS), die Handlungskarte liegt unten darüber (DOM danach). */}
             <div
                 className={`${styles.telefonBereich} scroll-mt-20 focus:outline-none`}
                 ref={telefonRef}
@@ -1680,19 +1667,21 @@ export function KiDemo({ children, turnstileSiteKey, begruessungNachStimme = fal
                     fehlerGrund={auftrag?.grund ?? null}
                 />
             </div>
-            )}
 
             {/* Aktion: Testanruf. Ab dem Scan ist der Platz reserviert (Platzhalter), danach bleibt
-                das Formular stehen und nur der Button wechselt — keine Layout-Sprünge beim Polling. */}
+                das Formular stehen und nur der Button wechselt — keine Layout-Sprünge beim Polling.
+                AUFTRAG-122 (S3): mobil in den passiven Phasen nicht gerendert (karteDa). */}
             <div className={styles.aktion}>
-                {zustand !== 'eingabe' && (
+                {karteDa && (
                     <section
                         ref={aktionRef}
                         aria-labelledby="ki-demo-anruf-titel"
                         // AUFTRAG-120/121: mobil fokussierbar (Fokus nach dem Anruf-Knopf, K7), am Desktop unverändert
                         tabIndex={istMobil ? -1 : undefined}
+                        // AUFTRAG-122 (S4.1): mobil feste Höhe im Firmen-Schritt (CSS), sonst Höhe = Inhalt
+                        data-karte={kompakt ? (firmenSchritt ? 'firma' : 'inhalt') : undefined}
                         className={`${styles.einblenden} ${styles.aktionKarte} rounded-[1.75rem] border border-border bg-card ${kompakt ? 'p-4 sm:p-6' : 'p-5 sm:p-7'} shadow-[0_30px_60px_-40px_rgba(10,18,10,0.45)] focus:outline-none`}
-                        // AUFTRAG-121 (K3): mobil feste Höhe aus dem CSS (Fenster), dort keine Mindesthöhe
+                        // AUFTRAG-121 (K3): mobil Höhe aus dem CSS, dort keine Mindesthöhe
                         style={aktionMin && !kompakt ? { minHeight: aktionMin } : undefined}
                     >
                         {schrittText && schrittZeile(schrittText)}
@@ -1738,12 +1727,9 @@ export function KiDemo({ children, turnstileSiteKey, begruessungNachStimme = fal
                                     {HR_SCHRITT.nochmalsVersuchen}
                                 </button>
                             </div>
-                        ) : kompakt && (!karte || !kartenAnzeige || zustand === 'scan') ? (
-                            kompaktVorbereitung()
                         ) : !karte || !kartenAnzeige || zustand === 'scan' ? (
+                            // AUFTRAG-122 (S3): mobil hier nie erreicht (Vollscan = keine Karte); am Desktop der Platzhalter wie bisher
                             anrufFormular(true)
-                        ) : kompakt && imAnruf ? (
-                            kompaktAnruf()
                         ) : kompakt && (zustand === 'beendet' || zustand === 'fehler') ? (
                             kompaktEnde()
                         ) : zustand === 'beendet' ? (
@@ -1794,8 +1780,8 @@ export function KiDemo({ children, turnstileSiteKey, begruessungNachStimme = fal
             </div>
 
             {/* AUFTRAG-100: Statuszeile mobil (fest unter dem Header, 48 px), solange das Telefon nicht im Bild ist.
-                [09.11.2026] Warum: AUFTRAG-121 (K2/K4) — im Kompaktmodus (Handy ab dem Scan) gibt es kein Telefon mehr: die
-                Zeile steht dann immer, zeigt Schritt und Fund bzw. den Anrufstand und rechts den Fortschritt («3/8») statt
+                [09.11.2026] Warum: AUFTRAG-121 (K2/K4) — im Kompaktmodus (Handy ab dem Scan; seit AUFTRAG-122 mit dem Telefon
+                als Bühne im Bild) steht die Zeile immer, zeigt Schritt und Fund bzw. den Anrufstand und rechts den Fortschritt («3/8») statt
                 «Zum Telefon»; sie springt nirgends hin (nur Anzeige, für Screenreader spricht die Live-Region unten). Der
                 Hinweis «Bitte Firma bestätigen» aus AUFTRAG-120 entfällt — die Aktionskarte ist immer im Bild. */}
             <button

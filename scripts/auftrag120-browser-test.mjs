@@ -16,6 +16,10 @@
  * [09.11.2026] Warum: AUFTRAG-121 Kompaktmodus, kein Scrollen mobil — die mobilen Prüfungen auf Sprünge (Z3), den
  * Statuszeilen-Hinweis «Bitte Firma bestätigen» (Z4) und die Mindesthöhe (Nacharbeit 2) sind auf das neue Verhalten
  * umgestellt (Karte immer im Bild, scrollY 0, Telefon mobil nicht gerendert). Desktop-Teil unverändert.
+ *
+ * [09.11.2026] Warum: AUFTRAG-122 Telefon als Bühne, Karte darüber — mobil ist das Telefon wieder gerendert, aber als
+ * Bühne unter der Kompaktzeile (Raster 'kompakt' 'buehne'); die Karte liegt unten bündig darüber und fehlt während des
+ * Anrufs (das Telefon zeigt den Stand). Weiterhin: keine Sprünge (scrollY 0), Statuszeile wie A-121, CLS 0.
  */
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -154,6 +158,10 @@ async function lage(page) {
             scrollY: Math.round(window.scrollY),
             karteTop: kr ? runde(kr.top) : null,
             karteHoehe: kr ? runde(kr.height) : null,
+            // AUFTRAG-122: Unterkante der Karte, Lage und Breite des Telefons (Bühne)
+            karteBottom: kr ? runde(kr.bottom) : null,
+            telefonBottom: tr ? runde(tr.bottom) : null,
+            telefonBreite: tel ? runde(tel.querySelector('figure').getBoundingClientRect().width) : null,
             karteDocTop: kr ? runde(kr.top + window.scrollY) : null,
             telefonTop: tr ? runde(tr.top) : null,
             telefonDocTop: tr ? runde(tr.top + window.scrollY) : null,
@@ -321,8 +329,13 @@ try {
         if (nachher) {
             check('A-121 mobil: nach dem Scan ist die Aktionskarte ganz im Bild ohne Sprung (scrollY 0, Oberkante ≥ 112 px, Unterkante ≤ 812 px)', nachScan.scrollY === 0 && nachScan.karteTop >= 112 && nachScan.karteTop + nachScan.karteHoehe <= 812, `Karte top ${nachScan.karteTop} px, Höhe ${nachScan.karteHoehe}, scrollY ${nachScan.scrollY}`);
             check('Z2 mobil: Schrittzeile «Schritt 1 von 2 · Firma bestätigen»', nachScan.schrittzeile?.text === TEXT.s1 && nachScan.schrittzeile.sichtbar, JSON.stringify(nachScan.schrittzeile));
-            check('A-121 mobil: Telefon-Mockup ab dem Scan nicht gerendert', nachScan.telefonTop === null, `Telefon top ${nachScan.telefonTop}`);
-            check('A-121 mobil: Grid-Reihenfolge im Kompaktmodus kompakt / aktion (vor dem Scan intro / konsole / aktion / telefon)', /"kompakt"\s*"aktion"/.test(nachScan.gridAreas ?? ''), nachScan.gridAreas);
+            // [09.11.2026] Warum: AUFTRAG-122 Telefon als Bühne, Karte darüber
+            check(
+                'A-122 mobil: Telefon gerendert als Bühne (≤ 300 px, ganz im Bild), Karte unten darüber',
+                nachScan.telefonTop !== null && nachScan.telefonBreite <= 300 && nachScan.telefonBottom <= 812 && nachScan.karteTop > nachScan.telefonTop && nachScan.karteBottom >= nachScan.telefonBottom - 1,
+                `Telefon ${nachScan.telefonTop}–${nachScan.telefonBottom} b${nachScan.telefonBreite}, Karte ${nachScan.karteTop}–${nachScan.karteBottom}`,
+            );
+            check('A-122 mobil: Raster im Kompaktmodus kompakt / buehne (vor dem Scan intro / konsole / aktion / telefon)', /"kompakt"\s*"buehne"/.test(nachScan.gridAreas ?? ''), nachScan.gridAreas);
             check('A-121 mobil: Statuszeile ohne Hinweis «Bitte Firma bestätigen» und ohne «Zum Telefon», mit Fortschritt n/8', nachScan.statuszeile?.sichtbar && !nachScan.statuszeile.text.includes(TEXT.firma) && !nachScan.statuszeile.text.includes('Zum Telefon') && /\d\/8/.test(nachScan.statuszeile.text), JSON.stringify(nachScan.statuszeile));
         }
         await page.locator(AKTION).screenshot({ path: path.join(SCREENS, 'mobil-2-aktionskarte-firma.png') });
@@ -337,16 +350,23 @@ try {
         const formular = await lage(page);
         protokoll.mobil.z5 = { vorBest, kurzNachBest, formular };
         if (nachher) {
-            const d1 = Math.abs(kurzNachBest.karteTop - vorBest.karteTop);
-            const d2 = Math.abs(formular.karteTop - vorBest.karteTop);
-            check('Z5 mobil: Kartenoberkante und -höhe bleiben beim Wechsel Firma → Formular gleich (A-121: feste Höhe)', d1 < 1 && d2 < 1 && Math.abs(formular.karteHoehe - vorBest.karteHoehe) < 1, `Karte top ${vorBest.karteTop} · ${kurzNachBest.karteTop} · ${formular.karteTop}; Höhe ${vorBest.karteHoehe} → ${kurzNachBest.karteHoehe} → ${formular.karteHoehe} px`);
+            // [09.11.2026] Warum: AUFTRAG-122 Telefon als Bühne, Karte darüber — die Formular-Karte hat die Höhe ihres Inhalts (die
+            // Firmen-Karte eine feste Höhe); fest bleiben die Unterkante der Karte und das Telefon (die Karte ist eine Überlagerung).
+            // Kurz nach der Bestätigung steht die Firmen-Karte noch unverändert oder ist schon weg (Vollscan: keine Karte).
+            const d1 = kurzNachBest.karteTop === null ? 0 : Math.abs(kurzNachBest.karteTop - vorBest.karteTop);
+            check(
+                'Z5 mobil (A-122): beim Wechsel Firma → Formular bleiben Kartenunterkante und Telefon stehen',
+                d1 < 1 && Math.abs(formular.karteBottom - vorBest.karteBottom) < 1 && Math.abs(formular.telefonTop - vorBest.telefonTop) < 1 && Math.abs(kurzNachBest.telefonTop - vorBest.telefonTop) < 1,
+                `Karte top ${vorBest.karteTop} · ${kurzNachBest.karteTop} · ${formular.karteTop}; unten ${vorBest.karteBottom} → ${formular.karteBottom}; Telefon ${vorBest.telefonTop} · ${kurzNachBest.telefonTop} · ${formular.telefonTop}`,
+            );
             check('Z2 mobil: Schrittzeile «Schritt 2 von 2 · Nummer eingeben, Testanruf starten»', formular.schrittzeile?.text === TEXT.s2 && formular.schrittzeile.sichtbar, JSON.stringify(formular.schrittzeile));
             const knopf = await page.evaluate(() => Math.round(document.querySelector('#ki-demo-anruf-knopf').getBoundingClientRect().bottom));
             check('A-121 mobil: Formular — Anruf-Knopf ganz im Bild, scrollY 0', knopf <= 812 && formular.scrollY === 0, `Knopf unten ${knopf}, scrollY ${formular.scrollY}`);
         }
         await page.locator(AKTION).screenshot({ path: path.join(SCREENS, 'mobil-3-aktionskarte-formular.png') });
 
-        // Anruf (gemockt) — A-121: kein Sprung zum Telefon mehr, die Karte zeigt den Stand
+        // Anruf (gemockt) — A-121: kein Sprung zum Telefon mehr. [09.11.2026] Warum: AUFTRAG-122 Telefon als Bühne, Karte
+        // darüber — während des Anrufs keine Karte, das Telefon zeigt den Stand
         await page.fill('#ki-demo-nummer', '79 123 45 67');
         await page.check('#ki-demo-einwilligung');
         await page.click('#ki-demo-anruf-knopf');
@@ -355,8 +375,13 @@ try {
         protokoll.mobil.anruf = anruf;
         await page.screenshot({ path: path.join(SCREENS, 'mobil-5-telefon-nach-anruf-klick.png') });
         if (nachher) {
-            check('A-121 mobil: nach dem Anruf-Knopf kein Sprung (scrollY 0), Karte mit Ablauf-Liste im Bild', anruf.scrollY === 0 && anruf.karteTop >= 112 && (await page.locator('ol[aria-label="Ablauf des Testanrufs"]').count()) === 1, `Karte top ${anruf.karteTop}, scrollY ${anruf.scrollY}`);
-            check('Z2 mobil: Schrittzeile «Testanruf läuft»', anruf.schrittzeile?.text === TEXT.laeuft, JSON.stringify(anruf.schrittzeile));
+            const telText = await page.evaluate(() => [...document.querySelectorAll('figure [aria-hidden="false"]')].map((a) => a.innerText).join(' ').replace(/\s+/g, ' '));
+            check(
+                'A-122 mobil: nach dem Anruf-Knopf kein Sprung (scrollY 0), keine Karte, das Telefon zeigt den Anruf',
+                anruf.scrollY === 0 && anruf.karteTop === null && anruf.telefonTop !== null && /Ihr Assistent wählt gleich|Anruf von/.test(telText),
+                `Karte ${anruf.karteTop}, scrollY ${anruf.scrollY}, Telefon «${telText.slice(0, 80)}»`,
+            );
+            check('Z2 mobil (A-122): während des Anrufs keine Karte und damit keine Schrittzeile', anruf.schrittzeile === null, JSON.stringify(anruf.schrittzeile));
             check('A-121 mobil: Statuszeile während des Anrufs «Testanruf · …», ohne «Zum Telefon»', anruf.statuszeile?.sichtbar && anruf.statuszeile.text.startsWith('Testanruf') && !anruf.statuszeile.text.includes('Zum Telefon'), JSON.stringify(anruf.statuszeile));
         }
         await page.waitForSelector(nachher ? '[data-ki-demo-ende]' : '#ki-demo-anruf-knopf[data-zustand="beendet"]', { timeout: 30000 });
