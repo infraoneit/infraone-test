@@ -1174,6 +1174,21 @@ export function KiDemo({ children, turnstileSiteKey, begruessungNachStimme = fal
         return () => clearTimeout(t);
     }, [kompakt, karteDa]);
 
+    /*
+     * [09.11.2026] Warum: AUFTRAG-122 Manager-Nachtrag — auf dem Handy rollt der Browser die Seite beim Fokus auf ein
+     * Eingabefeld (Bildschirmtastatur) um 200–350 px, damit das Feld sichtbar bleibt, und rollt sie danach nicht zurück
+     * (im eingebauten Browser gemessen: URL-Feld antippen → scrollY 214, Feld in der Fenstermitte). Die Bühne ist aber für
+     * «Seite ganz oben» gerechnet (Kompaktzeile, Telefon, Karte in Fensterhöhe). Deshalb bei jedem Zustandswechsel im
+     * Kompaktmodus (Scan-Start, Formular, Anruf, Ende) ohne Animation nach oben — kein Sprung innerhalb des Inhalts wie in
+     * A-120, sondern die Ausgangslage der Bühne. Am Desktop (kompakt false) passiert nichts. 'instant' statt 'auto': 'auto'
+     * folgt der CSS-Eigenschaft scroll-behavior (Seite: smooth) — das wäre eine sichtbare Fahrt nach oben und bleibt in
+     * einem Hintergrund-Tab ganz aus.
+     */
+    useEffect(() => {
+        if (!kompakt) return;
+        window.scrollTo({ top: 0, behavior: 'instant' });
+    }, [kompakt, zustand]);
+
     /* AUFTRAG-100: Statuszeile mobil — oben der Schritt, darunter der letzte Fund bzw. der Anrufstand */
     // AUFTRAG-121 (K2): `fortschritt` («3/8») steht mobil rechts in der Statuszeile statt «Zum Telefon»
     const statusZeile: { kopf: string; text: string; zeichen: 'scan' | 'farbe' | 'puls' | 'welle' | 'ok' | 'fehler'; farbe?: string; fortschritt?: string } | null = (() => {
