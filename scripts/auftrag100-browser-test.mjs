@@ -58,6 +58,11 @@
  * - Attrappe auf den Ablauf seit AUFTRAG-111/112 nachgeführt (Vorprüfung, Handelsregister-Bestätigung, Vollscan,
  *   Scan-Kennung im Format s-…, Logo über /api/demo/bild/<scan_id>/0); alle übrigen /api/demo/** gesperrt.
  *   Scan-Schritte jetzt 8 (Handelsregister, A-111).
+ *
+ * ANPASSUNG AUFTRAG-121 ([09.11.2026] Warum: AUFTRAG-121 Kompaktmodus, kein Scrollen mobil):
+ * - T3 mobil: Beim Scan-Start klappt der Hero zu, die Aktionskarte steht ohne Sprung ganz im Bild, das Telefon-Mockup ist
+ *   mobil nicht gerendert. Die Statuszeile steht ab dem Scan immer, zeigt rechts den Fortschritt statt «Zum Telefon» und
+ *   springt nicht mehr (Antippen ändert scrollY nicht); der Anruf-Knopf springt nicht mehr zum Telefon.
  */
 import { chromium } from 'playwright-core';
 import { registerHooks } from 'node:module';
@@ -712,10 +717,13 @@ async function teilT3(browser, { theme, ruhig = false }) {
     await warte(page, 1200);
     s = await statusZeile(page);
     const yScan = await page.evaluate(() => window.scrollY);
-    // [08.11.2026] Warum: AUFTRAG-120 führt den Sprung zur Aktionskarte bewusst ein (vorher: «kein automatischer Sprung»)
-    const karteTop = await page.evaluate(() => Math.round(document.querySelector('section[aria-labelledby="ki-demo-anruf-titel"]').getBoundingClientRect().top * 10) / 10);
-    check(`${name}: Scan-Start springt zur Aktionskarte (scrollY ${yVorher} → ${yScan}, Oberkante ${karteTop} px)`, yScan > yVorher && karteTop >= 100 && karteTop <= 250, `${yVorher} → ${yScan}, Karte ${karteTop}`);
-    // AUFTRAG-120: nach dem Sprung ist die Seite gescrollt, der Header endet dann bei 81 statt 80 px (Toleranz 1 px)
+    // [09.11.2026] Warum: AUFTRAG-121 Kompaktmodus, kein Scrollen mobil — statt des A-120-Sprungs zur Karte klappt der Hero zu,
+    // die Aktionskarte steht ohne Scrollen ganz im Bild, das Telefon-Mockup ist mobil nicht gerendert
+    const karte = await page.evaluate(() => {
+        const r = document.querySelector('section[aria-labelledby="ki-demo-anruf-titel"]').getBoundingClientRect();
+        return { top: Math.round(r.top * 10) / 10, bottom: Math.round(r.bottom * 10) / 10, telefon: !!document.querySelector('figure[aria-label^="Vorschau"]') };
+    });
+    check(`${name}: Scan-Start ohne Sprung (scrollY ${yVorher} → ${yScan}), Karte ganz im Bild (${karte.top}–${karte.bottom} px), kein Telefon`, yScan === yVorher && karte.top >= 112 && karte.bottom <= 812 && !karte.telefon, JSON.stringify(karte));
     check(`${name}: Statuszeile oben (unter dem Header, 48 px) mit Schritt`, s.sichtbar && s.hoehe === 48 && Math.abs(s.top - s.kopfUnten) <= 1 && /^Schritt \d von 8/.test(s.kopf), JSON.stringify(s));
     await firmaBestaetigen(page);
     // AUFTRAG-120: der Fund «Markenfarbe» steht nur einen Takt (~360 ms) — Statuszeile abfragen, bis er erscheint
@@ -732,32 +740,22 @@ async function teilT3(browser, { theme, ruhig = false }) {
     s = await statusZeile(page);
     check(`${name}: bereit – kein automatischer Sprung, Statuszeile «Lena ist bereit»`, Math.abs(yBereit - yScan) <= 1 && s.sichtbar && s.text === 'Lena ist bereit', `scrollY ${yScan} → ${yBereit}; ${s.kopf} | ${s.text}`);
     await shot(page, `${name}-2-statuszeile-bereit.png`);
-    await page.tap('button[class*="statuszeile"]');
+    // [09.11.2026] Warum: AUFTRAG-121 (K2) — mobil gibt es kein Telefon mehr: die Statuszeile springt nirgends hin und zeigt rechts
+    // den Fortschritt statt «Zum Telefon»; Antippen ändert nichts (scrollY bleibt)
+    await page.tap('button[class*="statuszeile"]', { force: true });
     await warte(page, ruhig ? 400 : 1100);
-    const tel = await telefonLage(page);
-    s = await statusZeile(page);
-    // [08.11.2026] AUFTRAG-120 (Z4): das Formular wartet jetzt oberhalb des Telefons — statt zu verschwinden zeigt die Statuszeile
-    // den Hinweis «Nummer eingeben für den Testanruf» (Ziel Aktionskarte)
-    const ziel = await page.evaluate(() => document.querySelector('button[data-ziel]')?.getAttribute('data-ziel') ?? null);
-    const hinweis = await page.evaluate(() => document.querySelector('button[data-ziel]')?.textContent.trim() ?? '');
-    check(`${name}: Antippen springt zum Telefon (top ${tel.top} px unter dem Header), Statuszeile weist zur wartenden Karte`, Math.abs(tel.top - tel.kopf) <= 4 && s.sichtbar && ziel === 'aktion' && hinweis === 'Nummer eingeben für den Testanruf', `Telefon top ${tel.top}, Header ${tel.kopf}, Statuszeile ${s.sichtbar} ${ziel} «${hinweis}»`);
+    const yTipp = await page.evaluate(() => window.scrollY);
+    const zeile = await page.evaluate(() => document.querySelector('button[class*="statuszeile"]').innerText.replace(/\s+/g, ' ').trim());
+    check(`${name}: Statuszeile ohne «Zum Telefon», mit Fortschritt 8/8; Antippen springt nicht (scrollY ${yBereit} → ${yTipp})`, !zeile.includes('Zum Telefon') && zeile.includes('8/8') && yTipp === yBereit, zeile);
     await shot(page, `${name}-3-nach-antippen.png`);
-    // Zum Formular: Telefon unten raus → Statuszeile wieder da; AUFTRAG-120: die Karte steht mobil VOR dem Telefon,
-    // der Pfeil zeigt deshalb nach unten
-    await page.locator('#ki-demo-nummer').scrollIntoViewIfNeeded();
-    await page.evaluate(() => window.scrollBy(0, -120));
-    await warte(page, 400);
-    s = await statusZeile(page);
-    const pfeil = await page.evaluate(() => document.querySelector('button[class*="statuszeile"] span.rounded-full svg')?.getAttribute('class') ?? '');
-    check(`${name}: beim Formular wieder sichtbar, Pfeil nach unten (Telefon unter der Karte)`, s.sichtbar && /arrow-down/.test(pfeil), `${s.text} · ${pfeil.slice(0, 40)}`);
+    const knopf = await page.evaluate(() => Math.round(document.querySelector('#ki-demo-anruf-knopf').getBoundingClientRect().bottom));
+    check(`${name}: Formular – Anruf-Knopf ohne Scrollen ganz im Bild (unten ${knopf} px)`, knopf <= 812, String(knopf));
     await anrufStarten(page);
     await warte(page, ruhig ? 400 : 1100);
-    // AUFTRAG-120: nach dem Anruf-Knopf springt die Seite zum Telefon, die Statuszeile ist dann weg
-    const telAnruf = await telefonLage(page);
+    // AUFTRAG-121: kein Sprung zum Telefon mehr — die Karte zeigt den Stand, die Statuszeile bleibt
+    const yAnruf = await page.evaluate(() => window.scrollY);
     s = await statusZeile(page);
-    check(`${name}: Anruf-Knopf springt zum Telefon (top ${telAnruf.top} px), Statuszeile weg`, Math.abs(telAnruf.top - telAnruf.kopf) <= 4 && !s.sichtbar, `Telefon top ${telAnruf.top}, Header ${telAnruf.kopf}, Statuszeile ${s.sichtbar}`);
-    // zurück zur Karte (Ablauf des Testanrufs): Telefon aus dem Bild → Statuszeile mit dem Anrufstand
-    await page.evaluate(() => document.querySelector('[aria-label="Ablauf des Testanrufs"]').scrollIntoView({ block: 'end' }));
+    check(`${name}: Anruf-Knopf ohne Sprung (scrollY ${yAnruf}), Statuszeile «Testanruf»`, yAnruf === yBereit && s.sichtbar && s.kopf === 'Testanruf', `${s.kopf} | ${s.text}`);
     await page.locator('#ki-demo-anruf-knopf[data-zustand="waehlt"]').waitFor({ timeout: 30000 });
     await warte(page, 400);
     s = await statusZeile(page);

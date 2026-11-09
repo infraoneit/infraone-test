@@ -19,7 +19,7 @@
  * AUFTRAG-112: Unter dem Untertitel von «Welche ist Ihre Firma?» und «Firma nicht gefunden» steht gedämpft
  * «Ihre Website lesen wir erst, nachdem Sie Ihre Firma bestätigt haben.» (der Vollscan läuft erst danach).
  */
-import { useId, useState, type FormEvent } from 'react';
+import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { ArrowRight, Building2, Check, Globe, Loader2, RotateCcw, Search } from 'lucide-react';
 import {
@@ -32,6 +32,7 @@ import {
     type HrTrefferAnzeige,
 } from '@/lib/demo/handelsregister-texte';
 import { HR_CODE_WEBSITE_PASST_NICHT } from '@/lib/demo/bindung';
+import styles from '../KiDemo.module.css';
 
 const KNOPF =
     'w-full inline-flex items-center justify-center gap-2.5 px-6 py-4 rounded-2xl text-[1.1875rem] font-bold leading-6 text-center bg-primary text-white shadow-lg shadow-primary/25 hover:bg-primary-hover focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-60 disabled:cursor-default';
@@ -59,14 +60,42 @@ interface Props {
     onAndereWebsite: () => void;
     /** Hinweis von aussen, z. B. «Bestätigung abgelaufen» nach 403 der Anruf-Route */
     hinweis?: string | null;
+    /**
+     * [09.11.2026] Warum: AUFTRAG-121 (K3.1) — Kompaktmodus der Aktionskarte auf dem Handy (nur unter 1024 px, von
+     * KiDemo gesetzt): Einträge einzeilig («Sitz · UID · Status», höchstens 56 px), Flex-Spalte, bei vielen Treffern
+     * scrollt nur die Liste (Schattenrand unten), Knopf und Link bleiben unten sichtbar. Nur Darstellung, Logik gleich.
+     */
+    kompakt?: boolean;
 }
 
 function versucheText(n: number): string {
     return n === 1 ? 'Noch 1 Versuch' : `Noch ${n} Versuche`;
 }
 
-function Eintrag({ t, gewaehlt, name, onWahl }: { t: HrTrefferAnzeige; gewaehlt: boolean; name: string; onWahl: () => void }) {
+function Eintrag({ t, gewaehlt, name, onWahl, kompakt = false }: { t: HrTrefferAnzeige; gewaehlt: boolean; name: string; onWahl: () => void; kompakt?: boolean }) {
     const id = `ki-demo-hr-${t.uid}`;
+    if (kompakt) {
+        // AUFTRAG-121 (K3.1): Name fett, darunter eine Zeile «Sitz · UID · Status» — Eintrag höchstens 56 px
+        return (
+            <label
+                htmlFor={id}
+                className={`flex items-center gap-3 rounded-xl border px-3 py-1.5 transition-colors has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-primary ${
+                    t.aktiv ? 'cursor-pointer' : 'cursor-default opacity-75'
+                } ${gewaehlt ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'border-border bg-surface'}`}
+                data-uid={t.uid}
+                data-aktiv={t.aktiv ? 'true' : 'false'}
+                title={t.name}
+            >
+                <input id={id} type="radio" name={name} value={t.uid} checked={gewaehlt} disabled={!t.aktiv} onChange={onWahl} className="w-5 h-5 flex-shrink-0 accent-[var(--primary)]" />
+                <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[0.95rem] font-semibold leading-5 text-text-primary">{t.name}</span>
+                    <span className="block truncate text-[0.8125rem] leading-5 text-text-secondary tabular-nums" data-hr-meta="">
+                        {t.sitz || 'unbekannt'} · {t.uid_formatiert} · <span className={t.aktiv ? undefined : 'font-semibold text-red-700 dark:text-red-300'}>{t.status_text}</span>
+                    </span>
+                </span>
+            </label>
+        );
+    }
     return (
         <label
             htmlFor={id}
@@ -98,7 +127,7 @@ function Eintrag({ t, gewaehlt, name, onWahl }: { t: HrTrefferAnzeige; gewaehlt:
     );
 }
 
-export function Handelsregister({ scanId, website, start, onNochmals, onBestaetigt, onAndereWebsite, hinweis = null }: Props) {
+export function Handelsregister({ scanId, website, start, onNochmals, onBestaetigt, onAndereWebsite, hinweis = null, kompakt = false }: Props) {
     // Antwort einer eigenen Suche, gebunden an die automatische Antwort, auf der sie aufbaut:
     // kommt eine neue automatische Antwort (Nochmals prüfen), gilt wieder diese.
     const [eigene, setEigene] = useState<{ basis: Props['start']; antwort: HrAntwort } | null>(null);
@@ -111,6 +140,25 @@ export function Handelsregister({ scanId, website, start, onNochmals, onBestaeti
     const [fehler, setFehler] = useState<string | null>(null);
     const [passtNicht, setPasstNicht] = useState<{ website: string; firma: string } | null>(null);
     const radioName = useId();
+    /*
+     * AUFTRAG-121 (K3.1): Schattenrand unten, solange die Liste im Kompaktmodus mehr Einträge hat, als sichtbar sind
+     * (und noch nicht ans Ende gescrollt). Nur ein Attribut am Element, kein neuer Zustand.
+     */
+    const listeRef = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+        const el = listeRef.current;
+        if (!kompakt || !el) return;
+        const pruefen = () => el.setAttribute('data-ueberlauf', el.scrollHeight - el.clientHeight - el.scrollTop > 2 ? 'true' : 'false');
+        pruefen();
+        el.addEventListener('scroll', pruefen, { passive: true });
+        const ro = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(pruefen);
+        ro?.observe(el);
+        if (el.firstElementChild) ro?.observe(el.firstElementChild);
+        return () => {
+            el.removeEventListener('scroll', pruefen);
+            ro?.disconnect();
+        };
+    });
 
     const eigeneGilt = !!eigene && eigene.basis === start;
     const antwort: HrAntwort | null = eigeneGilt ? eigene.antwort : start && start !== 'netz' ? start : null;
@@ -241,7 +289,7 @@ export function Handelsregister({ scanId, website, start, onNochmals, onBestaeti
     const passt = passtNicht ? websitePasstNichtTeile(passtNicht.website, passtNicht.firma) : null;
 
     return (
-        <div data-handelsregister={ergebnis} data-hr-liste={listeZu ? 'zu' : 'offen'}>
+        <div data-handelsregister={ergebnis} data-hr-liste={listeZu ? 'zu' : 'offen'} className={kompakt ? 'flex flex-col flex-1 min-h-0' : undefined}>
             <h2 id="ki-demo-anruf-titel" className="text-xl sm:text-2xl font-bold text-text-primary tracking-tight">
                 {titel}
             </h2>
@@ -278,7 +326,7 @@ export function Handelsregister({ scanId, website, start, onNochmals, onBestaeti
             )}
 
             {(ergebnis === 'treffer' || ergebnis === 'nicht_aktiv') && treffer.length > 0 && !listeZu && (
-                <div className="mt-4">
+                <div className={kompakt ? 'mt-3 flex flex-col flex-1 min-h-0' : 'mt-4'}>
                     <p className="text-sm text-text-secondary" id="ki-demo-hr-untertitel">
                         {untertitel}
                     </p>
@@ -287,20 +335,33 @@ export function Handelsregister({ scanId, website, start, onNochmals, onBestaeti
                             {HR_SCHRITT.leseHinweis}
                         </p>
                     )}
-                    <fieldset className="mt-3 space-y-2.5 min-w-0" aria-label="Einträge im Handelsregister">
-                        {treffer.map((t) => (
-                            <Eintrag
-                                key={t.uid}
-                                t={t}
-                                name={radioName}
-                                gewaehlt={auswahl === t.uid}
-                                onWahl={() => {
-                                    setWahl(t.uid);
-                                    setPasstNicht(null);
-                                }}
-                            />
-                        ))}
-                    </fieldset>
+                    {(() => {
+                        const liste = (
+                            <fieldset className={kompakt ? 'space-y-2 min-w-0' : 'mt-3 space-y-2.5 min-w-0'} aria-label="Einträge im Handelsregister">
+                                {treffer.map((t) => (
+                                    <Eintrag
+                                        key={t.uid}
+                                        t={t}
+                                        name={radioName}
+                                        gewaehlt={auswahl === t.uid}
+                                        kompakt={kompakt}
+                                        onWahl={() => {
+                                            setWahl(t.uid);
+                                            setPasstNicht(null);
+                                        }}
+                                    />
+                                ))}
+                            </fieldset>
+                        );
+                        // AUFTRAG-121 (K3.1): im Kompaktmodus scrollt nur diese Hülle (flex 1 1 auto, min-height 0)
+                        return kompakt ? (
+                            <div ref={listeRef} className={`${styles.hrListe} mt-2`} data-hr-liste-scroll="">
+                                {liste}
+                            </div>
+                        ) : (
+                            liste
+                        );
+                    })()}
                     {passt && (
                         <div className="mt-3 space-y-3" data-hr-passt-nicht="">
                             <p role="alert" className="rounded-2xl border border-red-200 dark:border-red-900/60 bg-red-50 dark:bg-red-950/40 px-4 py-3 text-sm text-red-800 dark:text-red-200">
@@ -320,7 +381,7 @@ export function Handelsregister({ scanId, website, start, onNochmals, onBestaeti
             )}
 
             {ergebnis === 'treffer' && !listeZu && (
-                <div className="mt-5 space-y-3">
+                <div className={kompakt ? 'mt-3 space-y-1 flex-shrink-0' : 'mt-5 space-y-3'}>
                     <button type="button" onClick={bestaetigen} disabled={!auswahl || !!laeuft} className={KNOPF} id="ki-demo-hr-bestaetigen">
                         {laeuft === 'bestaetige' ? <Loader2 className="w-5 h-5 animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <Check className="w-5 h-5" aria-hidden="true" />}
                         Ja, das ist meine Firma
@@ -415,7 +476,7 @@ export function Handelsregister({ scanId, website, start, onNochmals, onBestaeti
                 </div>
             )}
 
-            <p className="mt-5 text-xs text-text-secondary">{HR_TEXT.datenschutz}</p>
+            <p className={kompakt ? 'mt-auto pt-1 text-xs text-text-secondary flex-shrink-0' : 'mt-5 text-xs text-text-secondary'}>{HR_TEXT.datenschutz}</p>
         </div>
     );
 }

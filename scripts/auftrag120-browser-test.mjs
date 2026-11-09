@@ -12,6 +12,10 @@
  *   PHASE=nachher → messen, Screenshots, Prüfungen; Desktop-Screenshots pixelgenau gegen «vorher»
  *
  *   $env:BASE_URL='http://localhost:3011'; $env:PHASE='nachher'; node scripts/auftrag120-browser-test.mjs
+ *
+ * [09.11.2026] Warum: AUFTRAG-121 Kompaktmodus, kein Scrollen mobil — die mobilen Prüfungen auf Sprünge (Z3), den
+ * Statuszeilen-Hinweis «Bitte Firma bestätigen» (Z4) und die Mindesthöhe (Nacharbeit 2) sind auf das neue Verhalten
+ * umgestellt (Karte immer im Bild, scrollY 0, Telefon mobil nicht gerendert). Desktop-Teil unverändert.
  */
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -139,7 +143,8 @@ async function lage(page) {
     return page.evaluate((sel) => {
         const runde = (n) => Math.round(n * 10) / 10;
         const karte = document.querySelector(sel);
-        const tel = document.querySelector('figure')?.parentElement;
+        // AUFTRAG-121: genau das Telefon-Mockup (mobil ab dem Scan nicht gerendert → null)
+        const tel = document.querySelector('figure[aria-label^="Vorschau"]')?.parentElement;
         const zeile = document.querySelector('[data-ki-demo-schritt]');
         // Statuszeile (A-100); «vorher» ohne data-ziel, ohne id (die Primär-Knöpfe tragen ids)
         const status = document.querySelector('button[data-ziel]') ?? document.querySelector('button[data-zustand]:not([id])');
@@ -164,7 +169,8 @@ async function lage(page) {
                 : null,
             gridTelefon: tel ? getComputedStyle(tel).gridArea : null,
             gridAktion: karte?.parentElement ? getComputedStyle(karte.parentElement).gridArea : null,
-            gridAreas: tel?.parentElement ? getComputedStyle(tel.parentElement).gridTemplateAreas : null,
+            // AUFTRAG-121: Bühne über die Karte (mobil gibt es ab dem Scan kein Telefon)
+            gridAreas: (tel?.parentElement ?? karte?.parentElement?.parentElement) ? getComputedStyle(tel?.parentElement ?? karte.parentElement.parentElement).gridTemplateAreas : null,
         };
     }, AKTION);
 }
@@ -254,8 +260,9 @@ async function kontrast(page, selVorne, selHinten) {
 const TEXT = {
     s1: 'Schritt 1 von 2 · Firma bestätigen',
     s2: 'Schritt 2 von 2 · Nummer eingeben, Testanruf starten',
-    laeuft: 'Testanruf läuft · Stand im Telefon unten',
-    beendet: 'Testanruf beendet · Ergebnis im Telefon unten',
+    // [09.11.2026] Warum: AUFTRAG-121 Kompaktmodus, kein Scrollen mobil — mobil gibt es kein Telefon mehr unter der Karte
+    laeuft: 'Testanruf läuft',
+    beendet: 'Testanruf beendet',
     firma: 'Bitte Firma bestätigen',
     nummer: 'Nummer eingeben für den Testanruf',
 };
@@ -265,6 +272,10 @@ const protokoll = { zeit: new Date().toISOString(), basis: BASE, phase: PHASE, m
 const nachher = PHASE === 'nachher';
 try {
     /* ---------------- Mobil 375×812 (hell) ---------------- */
+    // [09.11.2026] Warum: AUFTRAG-121 Kompaktmodus, kein Scrollen mobil — die Sprünge (Z3), der Statuszeilen-Hinweis
+    // «Bitte Firma bestätigen» (Z4) und die gemessene Mindesthöhe (Nacharbeit 2) sind abgelöst. Geprüft wird jetzt:
+    // die Karte steht ab dem Scan ganz im Bild (scrollY bleibt 0), das Telefon ist mobil nicht gerendert, die Statuszeile
+    // zeigt Schritt und Fortschritt statt «Zum Telefon», die Schrittzeile bleibt (Texte während/nach dem Anruf nach K3).
     {
         const ctx = await browser.newContext({ viewport: { width: 375, height: 812 }, isMobile: true, hasTouch: true, deviceScaleFactor: 1, locale: 'de-CH' });
         await ctx.addInitScript(() => {
@@ -281,6 +292,9 @@ try {
                             quellen: (e.sources || []).map((q) => `${q.node?.nodeName ?? '?'}.${String(q.node?.className ?? '').slice(0, 40)} ${Math.round(q.previousRect.top)}→${Math.round(q.currentRect.top)} h${Math.round(q.previousRect.height)}→${Math.round(q.currentRect.height)}`),
                         });
             }).observe({ type: 'layout-shift', buffered: true });
+            // AUFTRAG-121: grösster scrollY im ganzen Ablauf
+            window.__maxScroll = 0;
+            addEventListener('scroll', () => (window.__maxScroll = Math.max(window.__maxScroll, scrollY)), { passive: true });
         });
         const page = await ctx.newPage();
         const konsole = [];
@@ -301,41 +315,19 @@ try {
         const nachScan = await lage(page);
         protokoll.mobil.nachScan = nachScan;
         if (nachher) {
-            const d = Math.abs(nachScan.telefonTop - laden.telefonTop);
-            check('Nacharbeit 2 mobil: Registerantwort lässt Karte und Telefon stehen (Laden → ein Treffer)', laden.handelsregister === 'pruefen' && d < 1 && Math.abs(nachScan.karteHoehe - laden.karteHoehe) < 1, `Karte ${laden.karteHoehe} → ${nachScan.karteHoehe} px, Telefon im Fenster ${laden.telefonTop} → ${nachScan.telefonTop} (${laden.handelsregister})`);
+            check('A-121 mobil: Registerantwort lässt die Karte stehen (Laden → ein Treffer, gleiche Lage und Höhe)', laden.handelsregister === 'pruefen' && Math.abs(nachScan.karteTop - laden.karteTop) < 1 && Math.abs(nachScan.karteHoehe - laden.karteHoehe) < 1, `Karte ${laden.karteTop}/${laden.karteHoehe} → ${nachScan.karteTop}/${nachScan.karteHoehe} px`);
         }
         await page.screenshot({ path: path.join(SCREENS, 'mobil-1-nach-scan-oben.png') });
         if (nachher) {
-            check('Z3 mobil: nach dem Scan ist die Aktionskarte im Bild (Oberkante 100–250 px)', nachScan.karteTop >= 100 && nachScan.karteTop <= 250, `Karte top ${nachScan.karteTop} px, scrollY ${nachScan.scrollY}`);
+            check('A-121 mobil: nach dem Scan ist die Aktionskarte ganz im Bild ohne Sprung (scrollY 0, Oberkante ≥ 112 px, Unterkante ≤ 812 px)', nachScan.scrollY === 0 && nachScan.karteTop >= 112 && nachScan.karteTop + nachScan.karteHoehe <= 812, `Karte top ${nachScan.karteTop} px, Höhe ${nachScan.karteHoehe}, scrollY ${nachScan.scrollY}`);
             check('Z2 mobil: Schrittzeile «Schritt 1 von 2 · Firma bestätigen»', nachScan.schrittzeile?.text === TEXT.s1 && nachScan.schrittzeile.sichtbar, JSON.stringify(nachScan.schrittzeile));
-            check('Z1 mobil: Telefon liegt unter der Karte (top Telefon > top Karte)', nachScan.telefonTop > nachScan.karteTop, `Telefon ${nachScan.telefonTop} > Karte ${nachScan.karteTop}`);
-            check('Z1 mobil: Grid-Reihenfolge intro / konsole / aktion / telefon', /"intro"\s*"konsole"\s*"aktion"\s*"telefon"/.test(nachScan.gridAreas ?? ''), nachScan.gridAreas);
+            check('A-121 mobil: Telefon-Mockup ab dem Scan nicht gerendert', nachScan.telefonTop === null, `Telefon top ${nachScan.telefonTop}`);
+            check('A-121 mobil: Grid-Reihenfolge im Kompaktmodus kompakt / aktion (vor dem Scan intro / konsole / aktion / telefon)', /"kompakt"\s*"aktion"/.test(nachScan.gridAreas ?? ''), nachScan.gridAreas);
+            check('A-121 mobil: Statuszeile ohne Hinweis «Bitte Firma bestätigen» und ohne «Zum Telefon», mit Fortschritt n/8', nachScan.statuszeile?.sichtbar && !nachScan.statuszeile.text.includes(TEXT.firma) && !nachScan.statuszeile.text.includes('Zum Telefon') && /\d\/8/.test(nachScan.statuszeile.text), JSON.stringify(nachScan.statuszeile));
         }
         await page.locator(AKTION).screenshot({ path: path.join(SCREENS, 'mobil-2-aktionskarte-firma.png') });
 
-        // Z4: Karte aus dem Bild (ganz nach oben) → Statuszeile weist zur Karte
-        if (nachher) {
-            await page.evaluate(() => window.scrollTo(0, 0));
-            await page.waitForTimeout(600);
-            const oben = await lage(page);
-            protokoll.mobil.z4Oben = oben;
-            check('Z4 mobil: Karte nicht im Bild → Statuszeile «Bitte Firma bestätigen» mit ↓', oben.statuszeile?.sichtbar && oben.statuszeile.text.startsWith(TEXT.firma) && oben.statuszeile.ziel === 'aktion' && (await page.locator('button[data-ziel] svg.lucide-arrow-down').count()) === 1, JSON.stringify(oben.statuszeile));
-            await page.screenshot({ path: path.join(SCREENS, 'mobil-4-statuszeile-firma.png') });
-            await page.click('button[data-ziel]');
-            await page.waitForTimeout(1200);
-            const nachTipp = await lage(page);
-            protokoll.mobil.z4NachTipp = nachTipp;
-            check('Z4 mobil: Antippen springt zur Aktionskarte (Oberkante 100–250 px)', nachTipp.karteTop >= 100 && nachTipp.karteTop <= 250, `Karte top ${nachTipp.karteTop}`);
-            // weit nach unten (Karte oben aus dem Bild) → Pfeil ↑
-            await page.evaluate((sel) => window.scrollTo(0, document.querySelector(sel).getBoundingClientRect().bottom + window.scrollY + 200), AKTION);
-            await page.waitForTimeout(600);
-            const unten = await lage(page);
-            check('Z4 mobil: Karte oberhalb → Pfeil ↑', unten.statuszeile?.sichtbar && unten.statuszeile.ziel === 'aktion' && (await page.locator('button[data-ziel] svg.lucide-arrow-up').count()) === 1, JSON.stringify(unten.statuszeile));
-            await page.click('button[data-ziel]');
-            await page.waitForTimeout(1200);
-        }
-
-        // Z5: Telefon vor/nach der Bestätigung
+        // Z5: Kartenoberkante vor/nach der Bestätigung
         const vorBest = await lage(page);
         await page.click('#ki-demo-hr-bestaetigen');
         await page.waitForTimeout(250);
@@ -345,28 +337,16 @@ try {
         const formular = await lage(page);
         protokoll.mobil.z5 = { vorBest, kurzNachBest, formular };
         if (nachher) {
-            // [08.11.2026] Warum: AUFTRAG-120 Nacharbeit 1 — Z5 neu: kein Sprung des SICHTBAREN Inhalts (Kartenoberkante bleibt),
-            // die Karte darf wachsen und das Telefon unter dem Bildrand nach unten rücken (kein Platzhalter mehr)
             const d1 = Math.abs(kurzNachBest.karteTop - vorBest.karteTop);
             const d2 = Math.abs(formular.karteTop - vorBest.karteTop);
-            check('Z5 mobil: Kartenoberkante bleibt beim Wechsel Firma → Formular gleich (Karte wächst nach unten)', d1 < 1 && d2 < 1 && formular.karteHoehe >= vorBest.karteHoehe, `Karte top ${vorBest.karteTop} · ${kurzNachBest.karteTop} · ${formular.karteTop}; Höhe ${vorBest.karteHoehe} → ${kurzNachBest.karteHoehe} → ${formular.karteHoehe} px; Telefon (Dokument) ${vorBest.telefonDocTop} → ${formular.telefonDocTop}; Telefon im Fenster ${vorBest.telefonTop} → ${formular.telefonTop}`);
-            // nur Messwert (keine Prüfung): wie viel vom Telefon vor der Bestätigung unten im Bild ist (Fensterhöhe 812 px)
-            protokoll.mobil.z5TelefonImBildVorBestaetigung = Math.max(0, Math.round(812 - vorBest.telefonTop));
-            console.log(`INFO  Z5 mobil: Telefon vor der Bestätigung ${protokoll.mobil.z5TelefonImBildVorBestaetigung} px unten im Bild (top ${vorBest.telefonTop} → ${formular.telefonTop})`);
+            check('Z5 mobil: Kartenoberkante und -höhe bleiben beim Wechsel Firma → Formular gleich (A-121: feste Höhe)', d1 < 1 && d2 < 1 && Math.abs(formular.karteHoehe - vorBest.karteHoehe) < 1, `Karte top ${vorBest.karteTop} · ${kurzNachBest.karteTop} · ${formular.karteTop}; Höhe ${vorBest.karteHoehe} → ${kurzNachBest.karteHoehe} → ${formular.karteHoehe} px`);
             check('Z2 mobil: Schrittzeile «Schritt 2 von 2 · Nummer eingeben, Testanruf starten»', formular.schrittzeile?.text === TEXT.s2 && formular.schrittzeile.sichtbar, JSON.stringify(formular.schrittzeile));
+            const knopf = await page.evaluate(() => Math.round(document.querySelector('#ki-demo-anruf-knopf').getBoundingClientRect().bottom));
+            check('A-121 mobil: Formular — Anruf-Knopf ganz im Bild, scrollY 0', knopf <= 812 && formular.scrollY === 0, `Knopf unten ${knopf}, scrollY ${formular.scrollY}`);
         }
         await page.locator(AKTION).screenshot({ path: path.join(SCREENS, 'mobil-3-aktionskarte-formular.png') });
 
-        if (nachher) {
-            await page.evaluate(() => window.scrollTo(0, 0));
-            await page.waitForTimeout(600);
-            const s = await lage(page);
-            check('Z4 mobil: Formular ohne Anruf, Karte nicht im Bild → «Nummer eingeben für den Testanruf»', s.statuszeile?.sichtbar && s.statuszeile.text.startsWith(TEXT.nummer) && s.statuszeile.ziel === 'aktion', JSON.stringify(s.statuszeile));
-            await page.click('button[data-ziel]');
-            await page.waitForTimeout(1200);
-        }
-
-        // Anruf (gemockt) → Sprung zum Telefon
+        // Anruf (gemockt) — A-121: kein Sprung zum Telefon mehr, die Karte zeigt den Stand
         await page.fill('#ki-demo-nummer', '79 123 45 67');
         await page.check('#ki-demo-einwilligung');
         await page.click('#ki-demo-anruf-knopf');
@@ -375,24 +355,23 @@ try {
         protokoll.mobil.anruf = anruf;
         await page.screenshot({ path: path.join(SCREENS, 'mobil-5-telefon-nach-anruf-klick.png') });
         if (nachher) {
-            check('Z3 mobil: nach dem Anruf-Knopf Sprung zum Telefon (Oberkante 0–150 px)', anruf.telefonTop >= 0 && anruf.telefonTop <= 150, `Telefon top ${anruf.telefonTop}, scrollY ${anruf.scrollY}`);
-            check('Z2 mobil: Schrittzeile «Testanruf läuft · Stand im Telefon unten»', anruf.schrittzeile?.text === TEXT.laeuft, JSON.stringify(anruf.schrittzeile));
-            await page.evaluate(() => window.scrollTo(0, 0));
-            await page.waitForTimeout(600);
-            const s = await lage(page);
-            check('Z4 mobil: während des Anrufs verhält sich die Statuszeile wie heute (Telefon)', s.statuszeile?.sichtbar && s.statuszeile.ziel === 'telefon' && s.statuszeile.text.includes('Zum Telefon'), JSON.stringify(s.statuszeile));
+            check('A-121 mobil: nach dem Anruf-Knopf kein Sprung (scrollY 0), Karte mit Ablauf-Liste im Bild', anruf.scrollY === 0 && anruf.karteTop >= 112 && (await page.locator('ol[aria-label="Ablauf des Testanrufs"]').count()) === 1, `Karte top ${anruf.karteTop}, scrollY ${anruf.scrollY}`);
+            check('Z2 mobil: Schrittzeile «Testanruf läuft»', anruf.schrittzeile?.text === TEXT.laeuft, JSON.stringify(anruf.schrittzeile));
+            check('A-121 mobil: Statuszeile während des Anrufs «Testanruf · …», ohne «Zum Telefon»', anruf.statuszeile?.sichtbar && anruf.statuszeile.text.startsWith('Testanruf') && !anruf.statuszeile.text.includes('Zum Telefon'), JSON.stringify(anruf.statuszeile));
         }
-        await page.waitForSelector('#ki-demo-anruf-knopf[data-zustand="beendet"]', { timeout: 30000 });
+        await page.waitForSelector(nachher ? '[data-ki-demo-ende]' : '#ki-demo-anruf-knopf[data-zustand="beendet"]', { timeout: 30000 });
         await page.waitForTimeout(600);
         const ende = await lage(page);
         protokoll.mobil.ende = ende;
-        if (nachher) check('Z2 mobil: Schrittzeile «Testanruf beendet · Ergebnis im Telefon unten»', ende.schrittzeile?.text === TEXT.beendet, JSON.stringify(ende.schrittzeile));
-        await page.locator('figure').first().screenshot({ path: path.join(SCREENS, 'mobil-6-telefon-beendet.png') });
+        if (nachher) check('Z2 mobil: Schrittzeile «Testanruf beendet»', ende.schrittzeile?.text === TEXT.beendet, JSON.stringify(ende.schrittzeile));
+        await page.locator(AKTION).screenshot({ path: path.join(SCREENS, 'mobil-6-telefon-beendet.png') });
         const cls = await page.evaluate(() => window.__cls);
         protokoll.mobil.cls = cls;
         if (nachher) {
             const summe = Math.round(cls.reduce((a, e) => a + e.wert, 0) * 10000) / 10000;
             check(`Nacharbeit 2 mobil: CLS im ganzen Ablauf ${summe}`, summe === 0, JSON.stringify(cls).slice(0, 1500));
+            const maxScroll = await page.evaluate(() => window.__maxScroll);
+            check('A-121 mobil: scrollY im ganzen Ablauf 0', maxScroll === 0, `max ${maxScroll}`);
             check('Mobil: keine Konsolenfehler, keine ungemockten Demo-Aufrufe, genau 1 (gemockter) Anruf', konsole.length === 0 && z.fremd.length === 0 && z.anrufe === 1, `${konsole.slice(0, 3).join(' | ')} ${z.fremd.join(' ')} Anrufe ${z.anrufe}`);
             const breit = await page.evaluate(() => document.documentElement.scrollWidth);
             check('Mobil: kein waagrechtes Scrollen', breit <= 375, `scrollWidth ${breit}`);
@@ -422,8 +401,7 @@ try {
             const k = await kontrast(page, '[data-ki-demo-schritt]', AKTION);
             protokoll.dunkel.kontrast = k;
             check('Dark Mode mobil: Schrittzeile lesbar (Kontrast ≥ 4.5:1 gegen bg-card)', dunkel && k.verhaeltnis >= 4.5, JSON.stringify(k));
-            check('Reduzierte Bewegung: Sprung zur Karte trotzdem (behavior auto), Oberkante 100–250 px', l.karteTop >= 100 && l.karteTop <= 250, `Karte top ${l.karteTop}`);
-            // heller Kontrast zum Vergleich
+            check('Reduzierte Bewegung (A-121): Karte ohne Sprung im Bild (scrollY 0, Oberkante ≥ 112 px)', l.scrollY === 0 && l.karteTop >= 112, `Karte top ${l.karteTop}, scrollY ${l.scrollY}`);
             await page.evaluate(() => document.documentElement.classList.remove('dark'));
             const kh = await kontrast(page, '[data-ki-demo-schritt]', AKTION);
             protokoll.dunkel.kontrastHell = kh;
@@ -432,7 +410,7 @@ try {
         await ctx.close();
     }
 
-    /* ---------------- Mobil: fünf Treffer (Nacharbeit 2: Karte darf höher sein, nichts abgeschnitten) ---------------- */
+    /* ---------------- Mobil: fünf Treffer (A-121: nur die Liste scrollt, Knopf im Bild) ---------------- */
     if (nachher) {
         const ctx = await browser.newContext({ viewport: { width: 375, height: 812 }, isMobile: true, hasTouch: true, deviceScaleFactor: 1, locale: 'de-CH' });
         await ctx.addInitScript(() => {
@@ -452,12 +430,19 @@ try {
         const l = await lage(page);
         const k = await page.evaluate((sel) => {
             const el = document.querySelector(sel);
-            const eintraege = el.querySelectorAll('label[data-uid]').length;
-            const letzte = [...el.querySelectorAll('p')].pop().getBoundingClientRect().bottom;
-            return { eintraege, scrollH: el.scrollHeight, clientH: el.clientHeight, overflow: getComputedStyle(el).overflowY, letzteZeileUnten: Math.round(letzte), karteUnten: Math.round(el.getBoundingClientRect().bottom) };
+            const liste = el.querySelector('[data-hr-liste-scroll]');
+            return {
+                eintraege: el.querySelectorAll('label[data-uid]').length,
+                listeScrollH: liste?.scrollHeight,
+                listeClientH: liste?.clientHeight,
+                listeOverflow: liste ? getComputedStyle(liste).overflowY : null,
+                knopfUnten: Math.round(document.querySelector('#ki-demo-hr-bestaetigen').getBoundingClientRect().bottom),
+                karteUnten: Math.round(el.getBoundingClientRect().bottom),
+                scrollY: Math.round(scrollY),
+            };
         }, AKTION);
         protokoll.mobil.fuenfTreffer = { laden: laden.karteHoehe, treffer: l.karteHoehe, ...k };
-        check('Nacharbeit 2 mobil: fünf Treffer — Karte höher als die Mindesthöhe, nichts abgeschnitten, kein Scrollen in der Karte', k.eintraege === 5 && l.karteHoehe > laden.karteHoehe && k.scrollH <= k.clientH + 1 && k.overflow === 'visible' && k.letzteZeileUnten <= k.karteUnten, `Laden ${laden.karteHoehe} → 5 Treffer ${l.karteHoehe} px; ${JSON.stringify(k)}`);
+        check('A-121 mobil: fünf Treffer — Karte gleich hoch wie beim Laden, nur die Liste scrollt intern, Knopf im Bild', k.eintraege === 5 && Math.abs(l.karteHoehe - laden.karteHoehe) < 1 && k.listeScrollH > k.listeClientH && k.listeOverflow === 'auto' && k.knopfUnten <= 812 && k.karteUnten <= 812 && k.scrollY === 0, `Laden ${laden.karteHoehe} → 5 Treffer ${l.karteHoehe} px; ${JSON.stringify(k)}`);
         await page.screenshot({ path: path.join(SCREENS, 'mobil-7-fuenf-treffer.png') });
         await ctx.close();
     }

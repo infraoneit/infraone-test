@@ -26,10 +26,10 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, use
 import Link from 'next/link';
 import { ArrowDown, ArrowRight, ArrowUp, BookOpen, Check, Clock, Globe, Languages, Loader2, Phone, PhoneCall, RotateCcw, Timer, X } from 'lucide-react';
 import styles from './KiDemo.module.css';
-import { Telefon, SPRACH_WAHL, ANRUF_VON, sprachName, type KartenAnzeige, type SchrittAnzeige } from './ki-demo/Telefon';
+import { Telefon, SPRACH_WAHL, ANRUF_VON, fehlerGrundText, sprachName, ZUSAMMENFASSUNG_FOLGT, type KartenAnzeige, type SchrittAnzeige } from './ki-demo/Telefon';
 import { Handelsregister } from './ki-demo/Handelsregister';
-import { HR_CODE_ABGELAUFEN, HR_CODE_FEHLT, HR_SCHRITT, type HrAntwort, type HrBestaetigt, type HrTrefferAnzeige } from '@/lib/demo/handelsregister-texte';
-import { ANFRAGE_FIRMA_SCHLUESSEL, ANFRAGE_HREF } from '@/lib/ki-anfrage';
+import { HR_CODE_ABGELAUFEN, HR_CODE_FEHLT, HR_SCHRITT, type HrAntwort, type HrBestaetigt } from '@/lib/demo/handelsregister-texte';
+import { ANFRAGE_FIRMA_SCHLUESSEL, ANFRAGE_HREF, ANFRAGE_ID } from '@/lib/ki-anfrage';
 import { kuerzeName, sprechName } from '@/lib/demo/bindung';
 import {
     brauchtDunklenGrund,
@@ -84,63 +84,26 @@ const HINWEIS = {
 const GRUEN_LEERLAUF = '#4CAF50';
 
 /*
- * [08.11.2026] Warum: AUFTRAG-120 (Z2/Z4) — auf dem Handy «checkte niemand», was nach dem Scan zu tun ist. Die
- * Aktionskarte sagt mobil in einer Zeile über der Überschrift, wo der Besucher steht; die Statuszeile (A-100)
- * weist zur Karte, solange sie auf ihn wartet. Texte wortgleich aus dem Auftrag.
+ * [08.11.2026] Warum: AUFTRAG-120 (Z2) — auf dem Handy «checkte niemand», was nach dem Scan zu tun ist. Die
+ * Aktionskarte sagt mobil in einer Zeile über der Überschrift, wo der Besucher steht. Texte wortgleich aus dem Auftrag.
+ * [09.11.2026] Warum: AUFTRAG-121 (K3/K4) — mobil gibt es während des Anrufs kein Telefon mehr unter der Karte; der
+ * Hinweis «… im Telefon unten» wäre falsch. Daher wortgleich K3.3/K3.4: «Testanruf läuft» / «Testanruf beendet».
+ * Der Statuszeilen-Hinweis «Bitte Firma bestätigen» (A-120, Z4) entfällt: die Karte ist immer im Bild.
  */
 const SCHRITT_FUEHRUNG = {
     firma: 'Schritt 1 von 2 · Firma bestätigen',
     nummer: 'Schritt 2 von 2 · Nummer eingeben, Testanruf starten',
-    laeuft: 'Testanruf läuft · Stand im Telefon unten',
-    beendet: 'Testanruf beendet · Ergebnis im Telefon unten',
-};
-const STATUS_ZUR_AKTION = {
-    firma: 'Bitte Firma bestätigen',
-    nummer: 'Nummer eingeben für den Testanruf',
+    laeuft: 'Testanruf läuft',
+    beendet: 'Testanruf beendet',
 };
 
-/*
- * [09.11.2026] Warum: AUFTRAG-120, Nacharbeit 2 — Muster für die Messung der Mindesthöhe im Firmen-Schritt (nur Handy):
- * die Karte, wie sie mit GENAU EINEM Registertreffer aussieht. Der Name ist ein neutrales Muster mittlerer Länge
- * (einzeilig wie die meisten Firmennamen); Untertitel und Website kommen aus dem laufenden Scan.
- */
-const MUSTER_SCAN_ID = 's-mustermessung00';
-const MUSTER_TREFFER: HrTrefferAnzeige = {
-    uid: 'CHE000000000',
-    uid_formatiert: 'CHE-000.000.000',
-    name: 'Muster Handels AG',
-    sitz: 'Winterthur',
-    status: 'ACTIVE',
-    status_text: 'aktiv',
-    rechtsform: 'AG',
-    aktiv: true,
-};
-const MUSTER_ANTWORT: HrAntwort = { scan_id: MUSTER_SCAN_ID, modus: 'streng', ergebnis: 'treffer', quelle: 'uid', treffer: [MUSTER_TREFFER], versuche_rest: 3, bestaetigt: null };
-const nichts = () => undefined;
-
-/** AUFTRAG-120: Führung und Sprünge nur unterhalb von lg (1024 px); am Desktop bleibt alles wie A-100 */
+/** AUFTRAG-120/121: Kompaktmodus nur unterhalb von lg (1024 px); am Desktop bleibt alles wie A-100 */
 const MOBIL = '(max-width: 1023px)';
 const istMobilJetzt = () => typeof window !== 'undefined' && window.matchMedia(MOBIL).matches;
 function mobilAbonnieren(melden: () => void) {
     const mq = window.matchMedia(MOBIL);
     mq.addEventListener('change', melden);
     return () => mq.removeEventListener('change', melden);
-}
-
-/**
- * AUFTRAG-120 (Z3): weich zu einem Element scrollen (Oberkante minus scroll-margin-top), bei
- * prefers-reduced-motion ohne Animation. Ziel aus der Lage im Dokument OHNE Transform (offsetTop-Kette):
- * die Aktionskarte blendet beim Start des Scans mit translateY(8px) ein, scrollIntoView träfe sonst 8 px
- * daneben. Fokus nur auf Wunsch und ohne eigenen Scroll (preventScroll), damit er den Sprung nicht zurückreisst.
- */
-function scrolleZu(el: HTMLElement | null, fokus: boolean) {
-    if (!el) return;
-    const ruhig = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    let oben = 0;
-    for (let e: HTMLElement | null = el; e; e = e.offsetParent as HTMLElement | null) oben += e.offsetTop;
-    const rand = parseFloat(getComputedStyle(el).scrollMarginTop) || 0;
-    window.scrollTo({ top: Math.max(0, oben - rand), behavior: ruhig ? 'auto' : 'smooth' });
-    if (fokus) el.focus({ preventScroll: true });
 }
 
 /** Schritte des Scans im Telefon: Website, Handelsregister (AUFTRAG-111), Logo, Farbe, Telefon, Öffnungszeiten, Wissen, Assistent */
@@ -788,12 +751,19 @@ export function KiDemo({ children, turnstileSiteKey, begruessungNachStimme = fal
      * (unter dem Header) Schritt und Fund; Antippen springt zum Telefon.
      * Desktop: Das Telefon läuft ab lg mit (position: sticky, siehe CSS).
      */
-    // AUFTRAG-120: dazu die Lage der Aktionskarte (im Bild? oberhalb?) für den Hinweis in der Statuszeile
-    const [sicht, setSicht] = useState({ telefon: true, oben: false, buehne: true, aktion: true, aktionOben: false });
+    /*
+     * [09.11.2026] Warum: AUFTRAG-121 (K2) — mobil ist das Telefon ab dem Scan nicht gerendert (kein IntersectionObserver
+     * auf ein Telefon, das es nicht gibt); kommt es zurück (Eingabe), wird es neu beobachtet. Am Desktop immer gerendert.
+     */
+    const istMobil = useSyncExternalStore(mobilAbonnieren, istMobilJetzt, () => false);
+    const kompakt = istMobil && zustand !== 'eingabe';
+    const telefonDa = !kompakt;
+    const [sicht, setSicht] = useState({ telefon: true, oben: false, buehne: true });
     useEffect(() => {
         const tel = telefonRef.current;
         const buehne = buehneRef.current;
-        if (!tel || !buehne || typeof IntersectionObserver === 'undefined') return;
+        // AUFTRAG-121 (K2): die Bühne wird immer beobachtet (Statuszeile weg ausserhalb der Demo), das Telefon nur, wenn es gerendert ist
+        if (!buehne || typeof IntersectionObserver === 'undefined') return;
         // Header mobil: 64 px + 16 px Abstand oben
         const rand = '-80px 0px 0px 0px';
         const ioTel = new IntersectionObserver(
@@ -807,13 +777,13 @@ export function KiDemo({ children, turnstileSiteKey, begruessungNachStimme = fal
             { rootMargin: rand, threshold: [0, 0.2, 0.35, 0.5, 0.75, 1] },
         );
         const ioBuehne = new IntersectionObserver(([e]) => setSicht((s) => (s.buehne === e.isIntersecting ? s : { ...s, buehne: e.isIntersecting })), { rootMargin: rand });
-        ioTel.observe(tel);
+        if (tel) ioTel.observe(tel);
         ioBuehne.observe(buehne);
         return () => {
             ioTel.disconnect();
             ioBuehne.disconnect();
         };
-    }, []);
+    }, [telefonDa]);
 
     const zumTelefon = () => {
         const el = telefonRef.current;
@@ -829,6 +799,8 @@ export function KiDemo({ children, turnstileSiteKey, begruessungNachStimme = fal
         const el = aktionRef.current;
         if (!aktionSichtbar || !el || typeof ResizeObserver === 'undefined') return;
         const ro = new ResizeObserver((eintraege) => {
+            // AUFTRAG-121 (K3): mobil hat die Karte eine feste Höhe (Fenster) — dort keine Mindesthöhe festhalten
+            if (istMobilJetzt()) return;
             const h = Math.round(eintraege[0]?.borderBoxSize?.[0]?.blockSize ?? el.getBoundingClientRect().height);
             // Ausreisser (z. B. Ganzseiten-Screenshot mit riesigem Viewport) nicht festhalten
             if (h > window.innerHeight * 2.5 && h > 1400) return;
@@ -839,77 +811,33 @@ export function KiDemo({ children, turnstileSiteKey, begruessungNachStimme = fal
     }, [aktionSichtbar]);
 
     /*
-     * [08.11.2026] Warum: AUFTRAG-120 (Z4) — wie beim Telefon (A-100) beobachtet ein IntersectionObserver die
-     * Aktionskarte. «Im Bild» heisst: unter Header und Statuszeile (64 + 16 + 48 px) sind mindestens 160 px
-     * (bzw. die halbe Karte) zu sehen. Liegt sie oberhalb, zeigt der Pfeil nach oben.
+     * [09.11.2026] Warum: AUFTRAG-121 (K2/K5) — die Sprünge aus AUFTRAG-120 (zur Karte, zum Telefon, zurück zur Karte),
+     * der Statuszeilen-Hinweis «Bitte Firma bestätigen» und die gemessene Mindesthöhe im Firmen-Schritt (Nacharbeit 2)
+     * entfallen: Im Kompaktmodus liegt die Karte immer ganz im Bild und hat eine feste Höhe (CSS), die Seite scrollt nie.
+     *
+     * AUFTRAG-121 (K7): mobil nach dem Scan Fokus auf das erste wählbare Firmen-Radio (ohne Scrollen); die Liste steht
+     * im Bild. Am Desktop unverändert (kein Fokuswechsel).
      */
+    const hrTrefferDa = hrStart !== null && hrStart !== 'netz' && hrStart.ergebnis === 'treffer' ? hrStart : null;
     useEffect(() => {
-        const el = aktionRef.current;
-        if (!aktionSichtbar || !el || typeof IntersectionObserver === 'undefined') return;
-        const io = new IntersectionObserver(
-            ([e]) => {
-                const oberkante = e.rootBounds?.top ?? 128;
-                const aktion = e.isIntersecting && e.intersectionRect.height >= Math.min(160, e.boundingClientRect.height * 0.5);
-                const aktionOben = e.boundingClientRect.top < oberkante;
-                setSicht((s) => (s.aktion === aktion && s.aktionOben === aktionOben ? s : { ...s, aktion, aktionOben }));
-            },
-            { rootMargin: '-128px 0px 0px 0px', threshold: Array.from({ length: 21 }, (_, i) => i / 20) },
-        );
-        io.observe(el);
-        return () => io.disconnect();
-    }, [aktionSichtbar]);
+        if (!kompakt || !hrTrefferDa || hrOk) return;
+        const t = setTimeout(() => (document.querySelector('[data-handelsregister] input[type="radio"]:not(:disabled)') as HTMLInputElement | null)?.focus({ preventScroll: true }), 0);
+        return () => clearTimeout(t);
+    }, [kompakt, hrTrefferDa, hrOk]);
 
     /*
-     * [08.11.2026] Warum: AUFTRAG-120 (Z3) — mobil steht die Aktionskarte jetzt unter dem URL-Feld, das Telefon
-     * darunter. Beim Start des Scans springt die Seite zur Karte (Firmen-Schritt sofort im Bild), nach dem
-     * Anruf-Knopf zum Telefon (dort ist ab jetzt der Stand). Scheitert der Anruf-Auftrag (zurück zu «bereit»,
-     * Meldung in der Karte), wieder zur Karte. Nur unter 1024 px; am Desktop passiert nichts (A-100 bleibt).
-     * Kein automatischer Fokuswechsel zur Karte: bestehende Fokus-Regeln (Firmen-Radio, ki-demo-nummer) bleiben.
+     * AUFTRAG-121 (K3.4): «Mehr anzeigen» nur, wenn die Zusammenfassung mehr als acht Zeilen hat (gemessen am
+     * gekürzten Absatz). Neuer Anruf → wieder zu.
      */
-    const vorZustand = useRef<Zustand>(zustand);
-    useEffect(() => {
-        const alt = vorZustand.current;
-        vorZustand.current = zustand;
-        if (alt === zustand || !istMobilJetzt()) return;
-        if (alt === 'eingabe' && zustand === 'scan') scrolleZu(aktionRef.current, false);
-        else if (alt === 'bereit' && zustand === 'wartend') scrolleZu(telefonRef.current, true);
-        else if (alt === 'wartend' && zustand === 'bereit') scrolleZu(aktionRef.current, false);
-    }, [zustand]);
-
-    /** AUFTRAG-120 (Z4): Antippen der Statuszeile im Hinweis-Modus — zur Aktionskarte, Fokus auf die Karte */
-    const zurAktion = () => scrolleZu(aktionRef.current, true);
-    const istMobil = useSyncExternalStore(mobilAbonnieren, istMobilJetzt, () => false);
-
-    /*
-     * [09.11.2026] Warum: AUFTRAG-120, Nacharbeit 2 — mobil steht das Telefon unter der Karte und ist im Firmen-Schritt
-     * teilweise im Bild. Wuchs die Karte beim Eintreffen der Registerantwort von «Wir gleichen … ab» auf die
-     * Trefferliste, rutschte das sichtbare Telefon ohne Eingabe um rund 227 px (CLS 0,15). Deshalb hat die Karte
-     * WÄHREND DES LADENS (nur Handy) eine Mindesthöhe = gemessene Höhe derselben Karte mit genau einem Treffer.
-     * Messung wie aktionMin, kein fester Wert: Beim Start des Ladens wird ein Muster (gleiche Breite, gleiche Klassen,
-     * Firmen-Schritt mit einem Eintrag) unsichtbar ausserhalb des Bildes gerendert, im Layout-Effekt gemessen und
-     * vor dem Malen wieder entfernt (zwei Layout-Effekte, kein sichtbares Bild, IDs nur für diesen einen Durchlauf
-     * doppelt). Mehr Treffer (bis 5) machen die Karte höher — kein Abschneiden. Danach hält aktionMin die Höhe.
-     */
-    const laedtFirma = istMobil && zustand === 'scan' && !hrOk && hrStart === null;
-    const [musterBreite, setMusterBreite] = useState<number | null>(null);
-    const [firmaMin, setFirmaMin] = useState(0);
-    const musterRef = useRef<HTMLDivElement>(null);
-    useLayoutEffect(() => {
-        if (!laedtFirma) return;
-        const breite = aktionRef.current?.getBoundingClientRect().width;
-        if (breite) setMusterBreite(breite);
-    }, [laedtFirma]);
-    useLayoutEffect(() => {
-        if (musterBreite === null) return;
-        const h = musterRef.current?.getBoundingClientRect().height ?? 0;
-        if (h > 0) setFirmaMin(Math.ceil(h));
-        setMusterBreite(null);
-    }, [musterBreite]);
+    const [mehrOffen, setMehrOffen] = useState(false);
+    const [zfLang, setZfLang] = useState(false);
+    const zfRef = useRef<HTMLParagraphElement>(null);
 
     const andereWebsite = () => {
         // neuer Lauf: verspätete Antworten des bisherigen Scans werden verworfen
         sitzungRef.current = neueSitzung(sitzungRef.current);
         setAktionMin(0);
+        setMehrOffen(false);
         setZustand('eingabe');
         setKarte(null);
         setAuftrag(null);
@@ -1001,6 +929,8 @@ export function KiDemo({ children, turnstileSiteKey, begruessungNachStimme = fal
         }
         // Sofortige Rückmeldung: der Button zeigt den Wartezustand, solange der Auftrag angelegt wird
         setZustand('wartend');
+        // AUFTRAG-121 (K7): mobil ersetzt die Ablauf-Ansicht das Formular — Fokus auf die Karte statt ins Leere (ohne Scrollen)
+        if (istMobilJetzt()) setTimeout(() => aktionRef.current?.focus({ preventScroll: true }), 0);
         // Turnstile-Token gilt nur einmal; das nächste «bereit» rendert ein frisches Widget
         const token = turnstileToken;
         setTurnstileToken(null);
@@ -1120,6 +1050,7 @@ export function KiDemo({ children, turnstileSiteKey, begruessungNachStimme = fal
     }, [zustand]);
 
     const nochmals = () => {
+        setMehrOffen(false);
         setAuftrag(null);
         setVerbundenSeit(null);
         setEinwilligung(false);
@@ -1228,7 +1159,8 @@ export function KiDemo({ children, turnstileSiteKey, begruessungNachStimme = fal
     const imAnruf = zustand === 'wartend' || zustand === 'waehlt' || zustand === 'verbunden';
 
     /* AUFTRAG-100: Statuszeile mobil — oben der Schritt, darunter der letzte Fund bzw. der Anrufstand */
-    const statusZeile: { kopf: string; text: string; zeichen: 'scan' | 'farbe' | 'puls' | 'welle' | 'ok' | 'fehler'; farbe?: string } | null = (() => {
+    // AUFTRAG-121 (K2): `fortschritt` («3/8») steht mobil rechts in der Statuszeile statt «Zum Telefon»
+    const statusZeile: { kopf: string; text: string; zeichen: 'scan' | 'farbe' | 'puls' | 'welle' | 'ok' | 'fehler'; farbe?: string; fortschritt?: string } | null = (() => {
         const assistent = kartenAnzeige?.name ?? 'Ihr Assistent';
         switch (zustand) {
             case 'eingabe':
@@ -1243,10 +1175,11 @@ export function KiDemo({ children, turnstileSiteKey, begruessungNachStimme = fal
                     text: fund?.titel ?? HR_SCHRITT.telefonPruefung,
                     zeichen: fund?.farbe ? 'farbe' : 'scan',
                     farbe: fund?.farbe,
+                    fortschritt: `${nummer}/${SCAN_SCHRITTE}`,
                 };
             }
             case 'bereit':
-                return { kopf: 'Scan abgeschlossen', text: hrOk ? `${assistent} ist bereit` : 'Bitte bestätigen Sie Ihre Firma', zeichen: 'farbe', farbe: kartenAnzeige?.primaer };
+                return { kopf: 'Scan abgeschlossen', text: hrOk ? `${assistent} ist bereit` : 'Bitte bestätigen Sie Ihre Firma', zeichen: 'farbe', farbe: kartenAnzeige?.primaer, fortschritt: `${SCAN_SCHRITTE}/${SCAN_SCHRITTE}` };
             case 'wartend':
                 return { kopf: 'Testanruf', text: 'Wir rufen Sie gleich an …', zeichen: 'puls' };
             case 'waehlt':
@@ -1254,24 +1187,14 @@ export function KiDemo({ children, turnstileSiteKey, begruessungNachStimme = fal
             case 'verbunden':
                 return { kopf: `Verbunden – ${dauerAnzeige(dauerSek)}`, text: `Sie sprechen mit ${assistent}`, zeichen: 'welle' };
             case 'beendet':
-                return { kopf: 'Testanruf', text: 'Gespräch beendet', zeichen: 'ok' };
+                // AUFTRAG-121 (K4): «Testanruf beendet» (die Statuszeile gibt es nur mobil)
+                return { kopf: 'Testanruf beendet', text: 'Gespräch beendet', zeichen: 'ok' };
             case 'fehler':
                 return { kopf: 'Testanruf', text: fehlerTitel(auftrag?.grund), zeichen: 'fehler' };
         }
     })();
-    /*
-     * [08.11.2026] Warum: AUFTRAG-120 (Z4) — wartet die Aktionskarte auf den Besucher (Firmen-Schritt mit Antwort
-     * des Registers, oder Formular ohne Anruf) und ist sie nicht im Bild, zeigt die Statuszeile statt des
-     * Scan-Schritts den Hinweis und springt zur Karte. Läuft der Anruf oder ist er beendet: wie A-100 (Telefon).
-     */
-    const aktionHinweis =
-        (zustand === 'scan' || zustand === 'bereit') && !hrOk && hrStart !== null
-            ? STATUS_ZUR_AKTION.firma
-            : zustand === 'bereit' && hrOk && !!karte && !anrufSperre
-              ? STATUS_ZUR_AKTION.nummer
-              : null;
-    const zurAktionZeigen = !!aktionHinweis && !sicht.aktion && sicht.buehne;
-    const statusSichtbar = zurAktionZeigen || (!!statusZeile && !sicht.telefon && sicht.buehne);
+    // AUFTRAG-121 (K2/K4): im Kompaktmodus steht die Statuszeile immer (es gibt kein Telefon, das sichtbar sein könnte)
+    const statusSichtbar = !!statusZeile && sicht.buehne && (kompakt || !sicht.telefon);
 
     /*
      * [08.11.2026] Warum: AUFTRAG-120 (Z2) — Schrittführung in der Aktionskarte (nur mobil, lg:hidden). Nach der
@@ -1296,6 +1219,48 @@ export function KiDemo({ children, turnstileSiteKey, begruessungNachStimme = fal
     );
 
 
+    /*
+     * [09.11.2026] Warum: AUFTRAG-121 (K3.3) — die Ablauf-Liste («Auftrag angenommen · Ihr Telefon klingelt …») als
+     * eine Funktion: am Desktop unter dem Formular wie bisher, mobil in der Ansicht «Anruf läuft» (keine Doppelung).
+     */
+    const ablaufListe = (kompaktListe: boolean) => (
+        <ol className={kompaktListe ? 'mt-3 space-y-2.5' : 'mt-6 space-y-3.5'} aria-label="Ablauf des Testanrufs">
+            {verlauf.map((v) => (
+                <li key={v.titel} className="flex items-start gap-3">
+                    <span
+                        className={`mt-0.5 flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center ${
+                            v.stand === 'ok'
+                                ? 'bg-primary text-white'
+                                : v.stand === 'laeuft'
+                                  ? 'text-primary ring-2 ring-primary/40'
+                                  : v.stand === 'fehler'
+                                    ? 'bg-red-600 text-white'
+                                    : 'ring-1 ring-border text-text-secondary'
+                        }`}
+                        aria-hidden="true"
+                    >
+                        {v.stand === 'ok' ? (
+                            <Check className="w-3.5 h-3.5" strokeWidth={3} />
+                        ) : v.stand === 'laeuft' ? (
+                            <span className={styles.puls} />
+                        ) : v.stand === 'fehler' ? (
+                            <X className="w-3.5 h-3.5" strokeWidth={3} />
+                        ) : null}
+                    </span>
+                    <span className="min-w-0">
+                        <span className={`block text-[0.95rem] font-semibold leading-snug ${v.stand === 'offen' ? 'text-text-secondary' : 'text-text-primary'}`}>
+                            {v.titel}
+                            <span className="sr-only">
+                                {v.stand === 'ok' ? ' (erledigt)' : v.stand === 'laeuft' ? ' (läuft)' : v.stand === 'fehler' ? ' (nicht erreicht)' : ' (folgt)'}
+                            </span>
+                        </span>
+                        <span className="block text-sm text-text-secondary tabular-nums">{v.detail}</span>
+                    </span>
+                </li>
+            ))}
+        </ol>
+    );
+
     /** Bestätigte Firma (Zeile «Handelsregister: Name, Sitz · UID») — über dem Formular bzw. über dem Hinweis nach einem Fehler im Vollscan */
     const bestaetigtZeile = (b: HrBestaetigt) => (
         <p className="mt-2 flex items-start gap-2 text-sm text-text-secondary" data-handelsregister-bestaetigt={b.uid}>
@@ -1315,8 +1280,8 @@ export function KiDemo({ children, turnstileSiteKey, begruessungNachStimme = fal
                                         {zustand === 'fehler' ? fehlerTitel(auftrag?.grund) : `${kartenAnzeige?.name ?? 'Ihr Assistent'} ruft Sie an`}
                                     </h2>
                                     {hrBestaetigt && !platzhalter && bestaetigtZeile(hrBestaetigt)}
-                                    <form onSubmit={starteAnruf} noValidate className="mt-5 space-y-5">
-                                        <fieldset disabled={zustand !== 'bereit' || !!anrufSperre} className="min-w-0 space-y-5 disabled:opacity-80">
+                                    <form onSubmit={starteAnruf} noValidate className={kompakt ? 'mt-3 flex flex-1 flex-col gap-3' : 'mt-5 space-y-5'}>
+                                        <fieldset disabled={zustand !== 'bereit' || !!anrufSperre} className={kompakt ? 'min-w-0 space-y-3 disabled:opacity-80' : 'min-w-0 space-y-5 disabled:opacity-80'}>
                                             <div role="radiogroup" aria-labelledby="ki-demo-sprache-titel">
                                                 <p id="ki-demo-sprache-titel" className="text-sm font-medium text-text-primary mb-2">
                                                     Sprache
@@ -1427,52 +1392,25 @@ export function KiDemo({ children, turnstileSiteKey, begruessungNachStimme = fal
                                         )}
     
                                         {/* Derselbe Button wechselt Text, Symbol und Farbe je Zustand */}
-                                        <PrimaerKnopf
-                                            zustand={zustand}
-                                            name={kartenAnzeige?.name ?? 'Ihr Assistent'}
-                                            type={zustand === 'bereit' ? 'submit' : 'button'}
-                                            onClick={zustand === 'fehler' ? nochmals : undefined}
-                                            id="ki-demo-anruf-knopf"
-                                            zweizeilig
-                                            gesperrt={zustand === 'bereit' && !!anrufSperre}
-                                        />
+                                        {(() => {
+                                            const knopf = (
+                                                <PrimaerKnopf
+                                                    zustand={zustand}
+                                                    name={kartenAnzeige?.name ?? 'Ihr Assistent'}
+                                                    type={zustand === 'bereit' ? 'submit' : 'button'}
+                                                    onClick={zustand === 'fehler' ? nochmals : undefined}
+                                                    id="ki-demo-anruf-knopf"
+                                                    zweizeilig
+                                                    gesperrt={zustand === 'bereit' && !!anrufSperre}
+                                                />
+                                            );
+                                            // AUFTRAG-121 (K3.2): mobil steht der Knopf unten in der Karte (Daumenbereich)
+                                            return kompakt ? <div className="mt-auto">{knopf}</div> : knopf;
+                                        })()}
                                     </form>
     
-                                    <ol className="mt-6 space-y-3.5" aria-label="Ablauf des Testanrufs">
-                                        {verlauf.map((v) => (
-                                            <li key={v.titel} className="flex items-start gap-3">
-                                                <span
-                                                    className={`mt-0.5 flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center ${
-                                                        v.stand === 'ok'
-                                                            ? 'bg-primary text-white'
-                                                            : v.stand === 'laeuft'
-                                                              ? 'text-primary ring-2 ring-primary/40'
-                                                              : v.stand === 'fehler'
-                                                                ? 'bg-red-600 text-white'
-                                                                : 'ring-1 ring-border text-text-secondary'
-                                                    }`}
-                                                    aria-hidden="true"
-                                                >
-                                                    {v.stand === 'ok' ? (
-                                                        <Check className="w-3.5 h-3.5" strokeWidth={3} />
-                                                    ) : v.stand === 'laeuft' ? (
-                                                        <span className={styles.puls} />
-                                                    ) : v.stand === 'fehler' ? (
-                                                        <X className="w-3.5 h-3.5" strokeWidth={3} />
-                                                    ) : null}
-                                                </span>
-                                                <span className="min-w-0">
-                                                    <span className={`block text-[0.95rem] font-semibold leading-snug ${v.stand === 'offen' ? 'text-text-secondary' : 'text-text-primary'}`}>
-                                                        {v.titel}
-                                                        <span className="sr-only">
-                                                            {v.stand === 'ok' ? ' (erledigt)' : v.stand === 'laeuft' ? ' (läuft)' : v.stand === 'fehler' ? ' (nicht erreicht)' : ' (folgt)'}
-                                                        </span>
-                                                    </span>
-                                                    <span className="block text-sm text-text-secondary tabular-nums">{v.detail}</span>
-                                                </span>
-                                            </li>
-                                        ))}
-                                    </ol>
+                                    {/* AUFTRAG-121 (K3.2): mobil erscheint die Ablauf-Liste erst nach dem Klick (eigene Ansicht, ablaufListe) */}
+                                    {!kompakt && ablaufListe(false)}
                                     {zustand === 'verbunden' && (
                                         <span className="sr-only" aria-label={`Gesprächsdauer ${dauerAnzeige(dauerSek)}`}>
                                             {dauerAnzeige(dauerSek)}
@@ -1499,9 +1437,127 @@ export function KiDemo({ children, turnstileSiteKey, begruessungNachStimme = fal
         );
     };
 
+    /*
+     * [09.11.2026] Warum: AUFTRAG-121 (K3) — Ansichten der Aktionskarte im Kompaktmodus (nur Handy). Das Telefon ist
+     * dort nicht gerendert; seine Aufgaben (Stand, Ergebnis) übernehmen diese Ansichten und die Statuszeile.
+     */
+    /** Kompakt, während die Karte nach der Bestätigung vorbereitet wird (Vollscan läuft) */
+    const kompaktVorbereitung = () => (
+        <>
+            <h2 id="ki-demo-anruf-titel" className="text-xl font-bold text-text-secondary tracking-tight">
+                Ihr Testanruf
+            </h2>
+            {hrBestaetigt && bestaetigtZeile(hrBestaetigt)}
+            <p role="status" className="mt-4 flex items-center gap-3 rounded-2xl bg-surface border border-border px-4 py-4 text-sm text-text-secondary">
+                <Loader2 className="w-5 h-5 flex-shrink-0 text-primary motion-safe:animate-spin" aria-hidden="true" />
+                Sobald Ihr Assistent bereit ist, wählen Sie hier Sprache und Nummer.
+            </p>
+        </>
+    );
+
+    /** K3.3: Anruf läuft — Ablauf-Liste mit Stand, Dauer m:ss, Absender, darunter der Statusknopf */
+    const kompaktAnruf = () => (
+        <>
+            <h2 id="ki-demo-anruf-titel" className="text-xl font-bold text-text-primary tracking-tight">
+                {`${kartenAnzeige?.name ?? 'Ihr Assistent'} ruft Sie an`}
+            </h2>
+            {ablaufListe(true)}
+            <p className="mt-4 flex items-center gap-2 text-sm text-text-secondary" data-ki-demo-dauer="">
+                <Clock className="w-4 h-4 flex-shrink-0" aria-hidden="true" />
+                Dauer <span className="font-semibold text-text-primary tabular-nums">{dauerAnzeige(dauerSek)}</span>
+            </p>
+            <p className="mt-1 text-xs text-text-secondary" data-ki-demo-anruf-von="">
+                Der Anruf kommt von {ANRUF_VON}.
+            </p>
+            <div className="mt-auto pt-3">
+                <PrimaerKnopf zustand={zustand} name={kartenAnzeige?.name ?? 'Ihr Assistent'} type="button" id="ki-demo-anruf-knopf" zweizeilig />
+            </div>
+        </>
+    );
+
+    /** K3.4: Anruf beendet — Zusammenfassung (acht Zeilen, «Mehr anzeigen»), Nochmals testen + Angebot anfragen; Fehlerfall */
+    const kompaktEnde = () => {
+        const gescheitert = zustand === 'fehler';
+        const zweitKnopf =
+            'inline-flex items-center justify-center min-h-12 px-3 py-2 rounded-2xl border-2 border-border text-text-primary text-[0.9375rem] font-semibold leading-tight text-center hover:border-primary transition-colors focus-visible:outline-2 focus-visible:outline-offset-2';
+        return (
+            <div data-ki-demo-ende={gescheitert ? 'fehler' : 'beendet'} className="flex flex-1 flex-col">
+                <h2 id="ki-demo-anruf-titel" className="text-xl font-bold text-text-primary tracking-tight">
+                    {gescheitert ? 'Der Anruf hat nicht geklappt' : 'Ihre Zusammenfassung'}
+                </h2>
+                {gescheitert ? (
+                    <p className="mt-3 text-text-secondary leading-relaxed">{fehlerGrundText(auftrag?.grund)}</p>
+                ) : (
+                    <div className="mt-3 rounded-2xl bg-surface border border-border p-4">
+                        <p ref={zfRef} data-ki-demo-zusammenfassung="" className={`text-[0.9375rem] text-text-primary leading-relaxed ${mehrOffen ? '' : 'line-clamp-8'}`}>
+                            {auftrag?.zusammenfassung ?? ZUSAMMENFASSUNG_FOLGT}
+                        </p>
+                        {zfLang && !mehrOffen && (
+                            <button type="button" id="ki-demo-mehr" onClick={() => setMehrOffen(true)} className="mt-1 text-sm font-semibold text-text-primary underline underline-offset-2 hover:no-underline">
+                                Mehr anzeigen
+                            </button>
+                        )}
+                        {auftrag?.dauer_s !== null && auftrag?.dauer_s !== undefined && (
+                            <p className="mt-1 text-sm text-text-secondary tabular-nums">Dauer: {dauerAnzeige(auftrag.dauer_s)} Min.</p>
+                        )}
+                    </div>
+                )}
+                <div className="mt-auto pt-4 grid grid-cols-2 gap-2">
+                    <button type="button" id="ki-demo-nochmals-testen" onClick={gescheitert ? nochmals : andereWebsite} className={zweitKnopf}>
+                        {gescheitert ? 'Nochmals versuchen' : 'Nochmals testen'}
+                    </button>
+                    {/* natives <a> wegen des Hashs; Firma wie beim Desktop-Link (AUFTRAG-114) im Formular vorbelegt. Dunkelgrün wie der
+                        Knopf «verbunden» (Bestand): Weiss auf bg-primary erreicht in 15 px nur 3,7:1 (hell) bzw. 2,8:1 (dunkel), hier ≥ 4.5:1 */}
+                    <a
+                        href={`#${ANFRAGE_ID}`}
+                        onClick={() => {
+                            const testFirma = hrBestaetigt?.name ?? (hrUebersprungen ? karte?.profil.firma : undefined) ?? '';
+                            try {
+                                if (testFirma.trim()) window.sessionStorage.setItem(ANFRAGE_FIRMA_SCHLUESSEL, testFirma.trim());
+                            } catch {
+                                // sessionStorage gesperrt: Formular öffnet ohne Vorbelegung
+                            }
+                        }}
+                        data-ki-demo-anfrage=""
+                        className={`${styles.knopf} inline-flex items-center justify-center min-h-12 px-3 py-2 rounded-2xl text-[0.9375rem] font-bold leading-tight text-center bg-[#1f7a35] text-white shadow-lg shadow-[#1f7a35]/30 hover:bg-[#1a6a2e] focus-visible:outline-2 focus-visible:outline-offset-2`}
+                    >
+                        Angebot anfragen
+                    </a>
+                </div>
+            </div>
+        );
+    };
+    // K3.4: gemessen, ob der gekürzte Absatz mehr als acht Zeilen hätte («Mehr anzeigen» nur dann)
+    const zfText = kompakt && zustand === 'beendet' ? (auftrag?.zusammenfassung ?? '') : null;
+    useLayoutEffect(() => {
+        const el = zfRef.current;
+        if (zfText === null || !el || mehrOffen) return;
+        setZfLang(el.scrollHeight > el.clientHeight + 1);
+    }, [zfText, mehrOffen]);
+
     return (
-        <div className={styles.buehne} ref={buehneRef}>
+        <div className={styles.buehne} ref={buehneRef} data-kompakt={kompakt ? 'true' : undefined}>
             <div className={styles.intro}>{children}</div>
+
+            {/* AUFTRAG-121 (K1): mobil ab dem Scan statt Hero und Konsole eine Zeile (44 px): Website und «Ändern» */}
+            {kompakt && (
+                <div className={`${styles.kompaktZeile} flex items-center gap-2.5 rounded-2xl bg-card pl-4 pr-1 ring-1 ring-border shadow-sm`} data-ki-demo-kompakt="">
+                    <Globe className="w-4 h-4 flex-shrink-0 text-text-secondary" aria-hidden="true" />
+                    <span className="min-w-0 flex-1 truncate text-sm font-medium text-text-primary" data-host="">
+                        {host || eingabe}
+                    </span>
+                    <button
+                        type="button"
+                        id="ki-demo-aendern"
+                        onClick={andereWebsite}
+                        disabled={imAnruf}
+                        aria-label="Website ändern"
+                        className="flex-shrink-0 h-11 px-3 text-sm font-semibold text-text-primary underline underline-offset-2 hover:no-underline disabled:opacity-50 disabled:no-underline disabled:cursor-not-allowed"
+                    >
+                        Ändern
+                    </button>
+                </div>
+            )}
 
             {/* Konsole: Eingabe der Website */}
             <div className={styles.konsole}>
@@ -1602,7 +1658,9 @@ export function KiDemo({ children, turnstileSiteKey, begruessungNachStimme = fal
                 </div>
             </div>
 
-            {/* Lebendes Telefon — ab lg läuft es während Scan, Karte und Anruf mit (sticky bis zum Ende der Bühne) */}
+            {/* Lebendes Telefon — ab lg läuft es während Scan, Karte und Anruf mit (sticky bis zum Ende der Bühne).
+                AUFTRAG-121 (K2): mobil ab dem Scan nicht gerendert (Kompaktmodus); Stand und Ergebnis zeigt die Aktionskarte. */}
+            {telefonDa && (
             <div
                 className={`${styles.telefonBereich} scroll-mt-20 focus:outline-none`}
                 ref={telefonRef}
@@ -1622,6 +1680,7 @@ export function KiDemo({ children, turnstileSiteKey, begruessungNachStimme = fal
                     fehlerGrund={auftrag?.grund ?? null}
                 />
             </div>
+            )}
 
             {/* Aktion: Testanruf. Ab dem Scan ist der Platz reserviert (Platzhalter), danach bleibt
                 das Formular stehen und nur der Button wechselt — keine Layout-Sprünge beim Polling. */}
@@ -1630,11 +1689,11 @@ export function KiDemo({ children, turnstileSiteKey, begruessungNachStimme = fal
                     <section
                         ref={aktionRef}
                         aria-labelledby="ki-demo-anruf-titel"
-                        // AUFTRAG-120 (Z4): mobil fokussierbar (Ziel der Statuszeile), am Desktop unverändert
+                        // AUFTRAG-120/121: mobil fokussierbar (Fokus nach dem Anruf-Knopf, K7), am Desktop unverändert
                         tabIndex={istMobil ? -1 : undefined}
-                        className={`${styles.einblenden} ${styles.aktionKarte} ${laedtFirma ? styles.firmaLaden : ''} rounded-[1.75rem] border border-border bg-card p-5 sm:p-7 shadow-[0_30px_60px_-40px_rgba(10,18,10,0.45)] focus:outline-none`}
-                        // AUFTRAG-120, Nacharbeit 2: mobil während des Ladens mindestens so hoch wie die Karte mit einem Treffer
-                        style={aktionMin || (laedtFirma && firmaMin) ? { minHeight: Math.max(aktionMin, laedtFirma ? firmaMin : 0) } : undefined}
+                        className={`${styles.einblenden} ${styles.aktionKarte} rounded-[1.75rem] border border-border bg-card ${kompakt ? 'p-4 sm:p-6' : 'p-5 sm:p-7'} shadow-[0_30px_60px_-40px_rgba(10,18,10,0.45)] focus:outline-none`}
+                        // AUFTRAG-121 (K3): mobil feste Höhe aus dem CSS (Fenster), dort keine Mindesthöhe
+                        style={aktionMin && !kompakt ? { minHeight: aktionMin } : undefined}
                     >
                         {schrittText && schrittZeile(schrittText)}
                         {firmenSchritt ? (
@@ -1657,6 +1716,7 @@ export function KiDemo({ children, turnstileSiteKey, begruessungNachStimme = fal
                                     setFormFehler(null);
                                 }}
                                 onAndereWebsite={andereWebsite}
+                                kompakt={kompakt}
                             />
                         ) : zustand === 'scan' && vollFehler ? (
                             // AUFTRAG-112: Fehler im Vollscan (Stufe 2) — Hinweis mit dem Servertext unter der bestätigten Firma
@@ -1678,8 +1738,14 @@ export function KiDemo({ children, turnstileSiteKey, begruessungNachStimme = fal
                                     {HR_SCHRITT.nochmalsVersuchen}
                                 </button>
                             </div>
+                        ) : kompakt && (!karte || !kartenAnzeige || zustand === 'scan') ? (
+                            kompaktVorbereitung()
                         ) : !karte || !kartenAnzeige || zustand === 'scan' ? (
                             anrufFormular(true)
+                        ) : kompakt && imAnruf ? (
+                            kompaktAnruf()
+                        ) : kompakt && (zustand === 'beendet' || zustand === 'fehler') ? (
+                            kompaktEnde()
                         ) : zustand === 'beendet' ? (
                             <>
                                 <h2 id="ki-demo-anruf-titel" className="text-xl sm:text-2xl font-bold text-text-primary tracking-tight">
@@ -1728,23 +1794,24 @@ export function KiDemo({ children, turnstileSiteKey, begruessungNachStimme = fal
             </div>
 
             {/* AUFTRAG-100: Statuszeile mobil (fest unter dem Header, 48 px), solange das Telefon nicht im Bild ist.
-                AUFTRAG-120 (Z4): wartet die Aktionskarte ausserhalb des Bildes, zeigt sie stattdessen den Hinweis und springt zur Karte. */}
+                [09.11.2026] Warum: AUFTRAG-121 (K2/K4) — im Kompaktmodus (Handy ab dem Scan) gibt es kein Telefon mehr: die
+                Zeile steht dann immer, zeigt Schritt und Fund bzw. den Anrufstand und rechts den Fortschritt («3/8») statt
+                «Zum Telefon»; sie springt nirgends hin (nur Anzeige, für Screenreader spricht die Live-Region unten). Der
+                Hinweis «Bitte Firma bestätigen» aus AUFTRAG-120 entfällt — die Aktionskarte ist immer im Bild. */}
             <button
                 type="button"
-                onClick={zurAktionZeigen ? zurAktion : zumTelefon}
+                onClick={kompakt ? undefined : zumTelefon}
                 className={styles.statuszeile}
                 data-sichtbar={statusSichtbar ? 'true' : undefined}
-                aria-hidden={!statusSichtbar || undefined}
-                tabIndex={statusSichtbar ? 0 : -1}
+                data-kompakt={kompakt ? 'true' : undefined}
+                aria-hidden={!statusSichtbar || kompakt || undefined}
+                tabIndex={statusSichtbar && !kompakt ? 0 : -1}
                 data-zustand={zustand}
-                data-ziel={zurAktionZeigen ? 'aktion' : 'telefon'}
             >
                 <span className="container mx-auto flex h-full items-center gap-3 px-4 text-left">
                     {/* key: jedes Zeichen ist ein neues Element (kein Umbau eines bestehenden = keine Layout-Verschiebung) */}
-                    <span key={zurAktionZeigen ? 'hinweis' : (statusZeile?.zeichen ?? 'leer')} className="flex h-7 w-7 flex-shrink-0 items-center justify-center" aria-hidden="true">
-                        {zurAktionZeigen ? (
-                            <span className={`${styles.puls} text-primary`} />
-                        ) : statusZeile?.zeichen === 'scan' ? (
+                    <span key={statusZeile?.zeichen ?? 'leer'} className="flex h-7 w-7 flex-shrink-0 items-center justify-center" aria-hidden="true">
+                        {statusZeile?.zeichen === 'scan' ? (
                             <Loader2 className="h-5 w-5 text-primary motion-safe:animate-spin" />
                         ) : statusZeile?.zeichen === 'farbe' ? (
                             <span className="h-4 w-4 rounded-full ring-2 ring-black/10 dark:ring-white/15" style={{ background: statusZeile.farbe ?? GRUEN_LEERLAUF }} />
@@ -1764,44 +1831,24 @@ export function KiDemo({ children, turnstileSiteKey, begruessungNachStimme = fal
                             <Check className="h-5 w-5 text-primary" strokeWidth={2.6} />
                         )}
                     </span>
-                    {/* AUFTRAG-120, Nacharbeit 2: eigene keys je Variante — ein umgebautes Element zählte als Layout-Verschiebung */}
-                    {zurAktionZeigen ? (
-                        <>
-                            <span key="hinweis-text" className="min-w-0 flex-1 truncate text-sm font-semibold leading-tight text-text-primary">
-                                {aktionHinweis}
+                    <span key="telefon-text" className="min-w-0 flex-1 leading-tight">
+                        <span className="block truncate text-xs text-text-secondary tabular-nums">{statusZeile?.kopf}</span>
+                        <span className="block truncate text-sm font-semibold text-text-primary tabular-nums">{statusZeile?.text}</span>
+                    </span>
+                    {kompakt ? (
+                        statusZeile?.fortschritt && (
+                            <span key="fortschritt" className="inline-flex flex-shrink-0 items-center rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-text-primary tabular-nums" data-ki-demo-fortschritt="">
+                                {statusZeile.fortschritt}
                             </span>
-                            <span key="hinweis-pfeil" className="inline-flex flex-shrink-0 items-center rounded-full bg-primary/10 px-2.5 py-1 text-text-primary">
-                                {sicht.aktionOben ? <ArrowUp className="h-3.5 w-3.5" aria-hidden="true" /> : <ArrowDown className="h-3.5 w-3.5" aria-hidden="true" />}
-                            </span>
-                        </>
+                        )
                     ) : (
-                        <>
-                            <span key="telefon-text" className="min-w-0 flex-1 leading-tight">
-                                <span className="block truncate text-xs text-text-secondary tabular-nums">{statusZeile?.kopf}</span>
-                                <span className="block truncate text-sm font-semibold text-text-primary tabular-nums">{statusZeile?.text}</span>
-                            </span>
-                            <span key="telefon-pill" className="inline-flex flex-shrink-0 items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-text-primary">
-                                Zum Telefon
-                                {sicht.oben ? <ArrowUp className="h-3.5 w-3.5" aria-hidden="true" /> : <ArrowDown className="h-3.5 w-3.5" aria-hidden="true" />}
-                            </span>
-                        </>
+                        <span key="telefon-pill" className="inline-flex flex-shrink-0 items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-text-primary">
+                            Zum Telefon
+                            {sicht.oben ? <ArrowUp className="h-3.5 w-3.5" aria-hidden="true" /> : <ArrowDown className="h-3.5 w-3.5" aria-hidden="true" />}
+                        </span>
                     )}
                 </span>
             </button>
-
-            {/* AUFTRAG-120, Nacharbeit 2: Mess-Muster (Karte mit einem Treffer) — nur für einen Layout-Durchlauf, nie sichtbar */}
-            {musterBreite !== null && (
-                <div
-                    ref={musterRef}
-                    aria-hidden="true"
-                    inert
-                    className="invisible fixed left-0 top-0 rounded-[1.75rem] border border-border bg-card p-5 sm:p-7"
-                    style={{ width: musterBreite }}
-                >
-                    {schrittZeile(SCHRITT_FUEHRUNG.firma)}
-                    <Handelsregister scanId={MUSTER_SCAN_ID} website={host} start={MUSTER_ANTWORT} onNochmals={nichts} onBestaetigt={nichts} onAndereWebsite={nichts} />
-                </div>
-            )}
 
             {/* Ansage der Zustandswechsel für Screenreader */}
             <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">

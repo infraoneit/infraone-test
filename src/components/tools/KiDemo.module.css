@@ -46,31 +46,90 @@
 }
 
 /*
- * [08.11.2026] Warum: AUFTRAG-120 (Z3), nur unter 1024 px — die Desktop-Blöcke unten bleiben byte-gleich.
- * scroll-margin-top: Sprung zur Karte endet unter Header (64 px + 16 px Abstand oben, wie .statuszeile) und
- * Statuszeile (48 px) plus 8 px Luft = 136 px.
+ * [09.11.2026] Warum: AUFTRAG-121 — Kompaktmodus auf dem Handy (nur unter 1024 px; die Desktop-Blöcke unten bleiben
+ * byte-gleich). Ersetzt die Scroll-Sprünge aus AUFTRAG-120 (scroll-margin-top) und die gemessene Mindesthöhe im
+ * Firmen-Schritt (Nacharbeit 2, .firmaLaden): Ab dem Start des Scans setzt KiDemo.tsx `data-kompakt` an der Bühne
+ * (nur mobil). Dann liegt in jedem Schritt alles in einem Blickfeld, die Seite muss nicht scrollen:
+ *   - K1: Intro (H1 bleibt im DOM und für Screenreader) und Konsole visuell aus, an ihrer Stelle die Kompaktzeile.
+ *   - K2: Das Telefon ist mobil nicht gerendert (KiDemo.tsx), das Raster hat nur noch 'kompakt' und 'aktion'.
+ *   - K3: Die Aktionskarte füllt den Rest des Fensters und ist nie höher: feste Höhe, Flex-Spalte; reicht der Platz
+ *     nicht (z. B. «Mehr anzeigen», Fehlermeldungen), scrollt nur die Karte, nie die Seite.
+ * Lage (Seite ganz oben, 1rem = 16 px): Header 64 px + 16 px Abstand (bzw. Notch), Statuszeile 48 px → Unterkante 128 px;
+ * 8 px Luft, Kompaktzeile 44 px, 8 px Abstand → Karte ab 188 px; unten 12 px Luft. Abstände in rem wie Header und
+ * Statuszeile (die Seite verkleinert unter 375 px die Grundschrift), die Kompaktzeile fest 44 px. Die Bühne beginnt auf der Seite bei
+ * <main> pt-20 (80 px) + Abschnitt pt-10 (40 px; ab sm pt-14 = 56 px) — daraus der obere Abstand der Kompaktzeile.
  */
 @media (max-width: 1023px) {
-    .aktionKarte {
-        scroll-margin-top: calc(4rem + max(1rem, env(safe-area-inset-top)) + 3rem + 0.5rem);
+    .buehne[data-kompakt='true'] {
+        grid-template-areas: 'kompakt' 'aktion';
+        row-gap: 0.5rem;
     }
-    /*
-     * [09.11.2026] Warum: AUFTRAG-120, Nacharbeit 2 — solange der Firmen-Schritt lädt («Wir gleichen … ab»), hat die
-     * Karte die gemessene Höhe der Karte mit einem Treffer (KiDemo.tsx, firmaMin). Die Datenschutz-Zeile (letztes Kind
-     * der Firmenwahl) steht dabei schon unten, wo sie mit einem Treffer steht — sonst rutschte sie beim Eintreffen der
-     * Liste sichtbar nach unten (Layout-Verschiebung). Nur Handy; die Klasse wird nur mobil während des Ladens gesetzt.
-     */
-    .firmaLaden {
+    .buehne[data-kompakt='true'] > .intro {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        margin: -1px;
+        padding: 0;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+    }
+    .buehne[data-kompakt='true'] > .konsole {
+        display: none;
+    }
+    .kompaktZeile {
+        grid-area: kompakt;
+        /* fest 44 px (Touch-Ziel «Ändern»), auch wo die Seite die Grundschrift verkleinert (1rem = 14 px unter 375 px) */
+        height: 44px;
+        /* Bühne beginnt bei 120 px, Statuszeile endet bei 7rem + max(1rem, Notch) → + 0.5rem Luft */
+        margin-top: max(1rem, env(safe-area-inset-top));
+    }
+    .buehne[data-kompakt='true'] .aktionKarte {
         display: flex;
         flex-direction: column;
+        /* Fensterhöhe − (Statuszeile unten 7rem + max(1rem, Notch) + 0.5rem + 44 px + 0.5rem) − 0.75rem Luft unten */
+        height: calc(100vh - 8.75rem - 44px - max(1rem, env(safe-area-inset-top)));
+        height: calc(100dvh - 8.75rem - 44px - max(1rem, env(safe-area-inset-top)));
+        overflow-y: auto;
+        overscroll-behavior: contain;
     }
-    .firmaLaden > [data-handelsregister] {
-        flex: 1 0 auto;
-        display: flex;
-        flex-direction: column;
+    /* K3.1: nur die Trefferliste scrollt (Flex 1 1 auto, min-height 0); 2 px Rand, damit Fokus- und Auswahlring nicht abgeschnitten werden */
+    .hrListe {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        padding: 2px;
     }
-    .firmaLaden > [data-handelsregister] > :last-child {
-        margin-top: auto;
+    /* sichtbarer Schattenrand unten, solange weitere Einträge unter dem Rand liegen (data-ueberlauf aus Handelsregister.tsx) */
+    .hrListe::after {
+        content: '';
+        position: sticky;
+        bottom: -2px;
+        display: block;
+        height: 1.25rem;
+        margin-top: -1.25rem;
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 0.2s ease;
+        background: linear-gradient(to bottom, transparent, rgba(10, 18, 10, 0.22));
+    }
+    :global(.dark) .hrListe::after {
+        background: linear-gradient(to bottom, transparent, rgba(0, 0, 0, 0.7));
+    }
+    .hrListe[data-ueberlauf='true']::after {
+        opacity: 1;
+    }
+    /* K2/K4: mobil zeigt die Statuszeile nur noch den Stand (kein Sprung zum Telefon mehr) */
+    .statuszeile[data-kompakt='true'] {
+        cursor: default;
+    }
+}
+@media (min-width: 640px) and (max-width: 1023px) {
+    /* ab sm beginnt die Bühne 16 px tiefer (Abschnitt pt-14) */
+    .kompaktZeile {
+        margin-top: calc(max(1rem, env(safe-area-inset-top)) - 1rem);
     }
 }
 

@@ -17,8 +17,26 @@ import type { Zustand } from '@/lib/demo/zustand';
 import { dauerAnzeige, fehlerTitel, GRUND_KEINE_RUECKMELDUNG } from '@/lib/demo/zustand';
 import type { Sprache } from '@/lib/demo/typen';
 
-/** Absendernummer der Demo-Anrufe (Orchestrator `ausgehende_cli`). */
-export const ANRUF_VON = '+41 44 552 03 06';
+/**
+ * Absendernummer der Demo-Anrufe (Orchestrator `ausgehende_cli`).
+ *
+ * [09.11.2026] Warum: AUFTRAG-121 K8 — peoplefone zeigt beim Angerufenen heute die Hauptnummer 052 222 18 18 statt
+ * der KI-Linie; bis das im Portal umgestellt ist, muss der angezeigte Text ohne Code-Änderung folgen können.
+ * Build-Variable NEXT_PUBLIC_DEMO_ANRUF_VON (beim Build eingesetzt); ohne Variable wortgleich wie bisher.
+ * Alle Anzeigen (Formular-Hinweis, Ablauf-Liste, Telefon-Bildschirm) nutzen diese eine Konstante.
+ */
+export const ANRUF_VON = process.env.NEXT_PUBLIC_DEMO_ANRUF_VON?.trim() || '+41 44 552 03 06';
+
+/**
+ * [09.11.2026] Warum: AUFTRAG-121 (K3.4) — Grund-Text bei «fehler», wie im Telefon-Bildschirm; die mobile
+ * Aktionskarte (Telefon dort nicht gerendert) nutzt denselben Text statt einer Kopie.
+ */
+export function fehlerGrundText(grund: string | null | undefined): string {
+    return grund === 'limit' ? 'Heute keine weiteren Testanrufe an diese Nummer.' : grund === GRUND_KEINE_RUECKMELDUNG ? 'Die Statusanzeige ist stehen geblieben.' : 'Versuchen Sie es gleich nochmals.';
+}
+
+/** AUFTRAG-121 (K3.4): Platzhalter der Zusammenfassung (Telefon und mobile Aktionskarte) */
+export const ZUSAMMENFASSUNG_FOLGT = 'Die Zusammenfassung folgt in Kürze.';
 
 /** AUFTRAG-112: `fehler` = Vollscan nach der Bestätigung gescheitert (Titel = Text des Servers) */
 export type SchrittStatus = 'laeuft' | 'ok' | 'leer' | 'fehler';
@@ -368,7 +386,7 @@ export function Telefon({ zustand, host, welleFarbe, schritte, karte, sprache, o
                                     <p className="text-[0.74rem] font-semibold" style={{ color: 'var(--kunde-akzent)' }}>
                                         Gesprächsnotiz
                                     </p>
-                                    <p className="mt-1.5 text-[0.8rem] leading-relaxed line-clamp-[9]">{zusammenfassung ?? 'Die Zusammenfassung folgt in Kürze.'}</p>
+                                    <p className="mt-1.5 text-[0.8rem] leading-relaxed line-clamp-[9]">{zusammenfassung ?? ZUSAMMENFASSUNG_FOLGT}</p>
                                 </div>
                             </Ansicht>
 
@@ -378,11 +396,7 @@ export function Telefon({ zustand, host, welleFarbe, schritte, karte, sprache, o
                                 </span>
                                 <p className="mt-4 text-lg font-semibold">{fehlerTitel(fehlerGrund)}</p>
                                 <p className="mt-1 text-sm text-[#5b6472] dark:text-[#9aa3af]">
-                                    {fehlerGrund === 'limit'
-                                        ? 'Heute keine weiteren Testanrufe an diese Nummer.'
-                                        : fehlerGrund === GRUND_KEINE_RUECKMELDUNG
-                                          ? 'Die Statusanzeige ist stehen geblieben.'
-                                          : 'Versuchen Sie es gleich nochmals.'}
+                                    {fehlerGrundText(fehlerGrund)}
                                 </p>
                             </Ansicht>
                         </>
