@@ -114,6 +114,21 @@ export const HR_SCHRITT = {
     nochmalsVersuchen: 'Nochmals versuchen',
 } as const;
 
+/**
+ * [09.11.2026] Warum: AUFTRAG-123 (Abschnitt 3, wortgleich vom Manager) — Texte nur für das Firmen-Blatt im Kompaktmodus
+ * (Handy, unter 1024 px): T1 Titel bei genau einem aktiven Treffer, T2 Herkunftszeile unter dem Titel (ersetzt dort
+ * Untertitel, Lesehinweis und die Datenschutz-Fusszeile), T3 zugänglicher Name je antippbarer Zeile bei mehreren Treffern.
+ * Am Desktop unverändert (HR_SCHRITT/HR_TEXT).
+ */
+export const HR_KOMPAKT = {
+    /** T1 */
+    titelEiner: 'Ist das Ihre Firma?',
+    /** T2 */
+    herkunft: 'Aus dem Handelsregister (Zefix)',
+    /** T3: aria-label je Trefferzeile («{Name}, {Sitz}: Das ist meine Firma») */
+    zeileLabel: (name: string, sitz: string) => `${name}, ${sitz}: Das ist meine Firma`,
+} as const;
+
 export const HR_TEXT = {
     /** Datenschutz-Hinweis im Widget (AUFTRAG-109, Abschnitt 3, wortgleich) */
     datenschutz: 'Wir prüfen den Firmennamen gegen das öffentliche Handelsregister (Zefix).',

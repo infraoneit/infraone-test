@@ -18,11 +18,18 @@
  *
  * AUFTRAG-112: Unter dem Untertitel von «Welche ist Ihre Firma?» und «Firma nicht gefunden» steht gedämpft
  * «Ihre Website lesen wir erst, nachdem Sie Ihre Firma bestätigt haben.» (der Vollscan läuft erst danach).
+ *
+ * [09.11.2026] Warum: AUFTRAG-123 ruhige Bühne — im Kompaktmodus (Handy) ist der Schritt ein Blatt mit EINER Frage und
+ * EINER Haupthandlung: Titel, höchstens eine Hilfszeile (T2 «Aus dem Handelsregister (Zefix)» bzw. die bestehende
+ * Meldung), der Inhalt, eine Haupthandlung, höchstens ein Textlink. Ein Treffer = ruhige Karte + «Ja, das ist meine
+ * Firma»; mehrere Treffer = antippbare Zeilen (ein Tipp = wählen und bestätigen, kein «Ja»-Knopf). Ohne Radios,
+ * Untertitel, Lesehinweis und Datenschutz-Fusszeile. Logik und Desktop-Darstellung unverändert.
  */
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import Link from 'next/link';
-import { ArrowRight, Building2, Check, Globe, Loader2, RotateCcw, Search } from 'lucide-react';
+import { ArrowRight, Building2, Check, ChevronRight, Globe, Loader2, RotateCcw, Search } from 'lucide-react';
 import {
+    HR_KOMPAKT,
     HR_SCHRITT,
     HR_TEXT,
     MANUELL_MAX,
@@ -39,6 +46,11 @@ const KNOPF =
 const KNOPF_ZWEIT =
     'inline-flex items-center justify-center gap-2 h-12 px-5 rounded-xl border-2 border-border text-text-primary text-base font-semibold hover:border-primary transition-colors disabled:opacity-50 disabled:cursor-default';
 const TEXTLINK = 'block mx-auto text-sm font-semibold text-text-primary underline underline-offset-2 hover:no-underline';
+/** AUFTRAG-123 (Z3): Textlink im Blatt — zentriert, Trefferfläche ≥ 44 px (fest in px, auch bei 14-px-Grundschrift) */
+const TEXTLINK_KOMPAKT = 'mx-auto mt-1 flex min-h-[44px] w-fit items-center justify-center px-3 text-sm font-semibold text-text-primary underline underline-offset-2 hover:no-underline';
+/** AUFTRAG-123 (Z3): Titel und Hilfszeile des Blatts */
+const TITEL_KOMPAKT = 'flex-shrink-0 text-[1.375rem] font-bold leading-tight tracking-tight text-text-primary focus:outline-none';
+const HILFE_KOMPAKT = 'mt-1 flex-shrink-0 text-sm text-text-secondary';
 
 const NETZ = 'Die Verbindung hat nicht geklappt. Bitte versuchen Sie es gleich nochmals.';
 
@@ -62,8 +74,8 @@ interface Props {
     hinweis?: string | null;
     /**
      * [09.11.2026] Warum: AUFTRAG-121 (K3.1) — Kompaktmodus der Aktionskarte auf dem Handy (nur unter 1024 px, von
-     * KiDemo gesetzt): Einträge einzeilig («Sitz · UID · Status», höchstens 56 px), Flex-Spalte, bei vielen Treffern
-     * scrollt nur die Liste (Schattenrand unten), Knopf und Link bleiben unten sichtbar. Nur Darstellung, Logik gleich.
+     * KiDemo gesetzt). AUFTRAG-123: eigene Blatt-Darstellung (siehe Kopf), bei vielen Treffern scrollt nur die Liste
+     * (Schattenrand unten). Nur Darstellung, Logik gleich.
      */
     kompakt?: boolean;
 }
@@ -72,30 +84,8 @@ function versucheText(n: number): string {
     return n === 1 ? 'Noch 1 Versuch' : `Noch ${n} Versuche`;
 }
 
-function Eintrag({ t, gewaehlt, name, onWahl, kompakt = false }: { t: HrTrefferAnzeige; gewaehlt: boolean; name: string; onWahl: () => void; kompakt?: boolean }) {
+function Eintrag({ t, gewaehlt, name, onWahl }: { t: HrTrefferAnzeige; gewaehlt: boolean; name: string; onWahl: () => void }) {
     const id = `ki-demo-hr-${t.uid}`;
-    if (kompakt) {
-        // AUFTRAG-121 (K3.1): Name fett, darunter eine Zeile «Sitz · UID · Status» — Eintrag höchstens 56 px
-        return (
-            <label
-                htmlFor={id}
-                className={`flex items-center gap-3 rounded-xl border px-3 py-1.5 transition-colors has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-primary ${
-                    t.aktiv ? 'cursor-pointer' : 'cursor-default opacity-75'
-                } ${gewaehlt ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'border-border bg-surface'}`}
-                data-uid={t.uid}
-                data-aktiv={t.aktiv ? 'true' : 'false'}
-                title={t.name}
-            >
-                <input id={id} type="radio" name={name} value={t.uid} checked={gewaehlt} disabled={!t.aktiv} onChange={onWahl} className="w-5 h-5 flex-shrink-0 accent-[var(--primary)]" />
-                <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[0.95rem] font-semibold leading-5 text-text-primary">{t.name}</span>
-                    <span className="block truncate text-[0.8125rem] leading-5 text-text-secondary tabular-nums" data-hr-meta="">
-                        {t.sitz || 'unbekannt'} · {t.uid_formatiert} · <span className={t.aktiv ? undefined : 'font-semibold text-red-700 dark:text-red-300'}>{t.status_text}</span>
-                    </span>
-                </span>
-            </label>
-        );
-    }
     return (
         <label
             htmlFor={id}
@@ -124,6 +114,59 @@ function Eintrag({ t, gewaehlt, name, onWahl, kompakt = false }: { t: HrTrefferA
                 </span>
             </span>
         </label>
+    );
+}
+
+/**
+ * [09.11.2026] Warum: AUFTRAG-123 (Z4.3) — mehrere Treffer: jede aktive Zeile ist EIN Knopf (Tipp = wählen und bestätigen),
+ * mindestens 64 px, Name höchstens zwei Zeilen, darunter «Sitz · UID», rechts ein Chevron (während der Anfrage ein Spinner).
+ * Inaktive Einträge bleiben sichtbar, sind aber kein Knopf (Status rot wie bisher).
+ */
+function Zeile({ t, gesperrt, laedt, onTipp }: { t: HrTrefferAnzeige; gesperrt: boolean; laedt: boolean; onTipp: () => void }) {
+    const sitz = t.sitz || 'unbekannt';
+    const inhalt = (
+        <span className="min-w-0 flex-1">
+            <span data-hr-name="" className="line-clamp-2 text-base font-semibold leading-snug text-text-primary">
+                {t.name}
+            </span>
+            <span className="mt-0.5 block text-sm leading-5 text-text-secondary tabular-nums" data-hr-meta="">
+                {sitz} · {t.uid_formatiert}
+                {!t.aktiv && (
+                    <>
+                        {' · '}
+                        <span className="font-semibold text-red-700 dark:text-red-300">{t.status_text}</span>
+                    </>
+                )}
+            </span>
+        </span>
+    );
+    if (!t.aktiv) {
+        return (
+            <div data-hr-zeile="" data-uid={t.uid} data-aktiv="false" className="flex min-h-[64px] items-center gap-3 rounded-2xl border border-dashed border-border px-4 py-2.5">
+                {inhalt}
+            </div>
+        );
+    }
+    return (
+        <button
+            type="button"
+            data-hr-zeile=""
+            data-uid={t.uid}
+            data-aktiv="true"
+            aria-label={HR_KOMPAKT.zeileLabel(t.name, sitz)}
+            onClick={onTipp}
+            disabled={gesperrt}
+            // min-h mit «!»: globals.css setzt mobil (ungeschichtet) min-height: 44px auf alle Knöpfe und schlägt sonst die
+            // Tailwind-Klasse — bei 14-px-Grundschrift (360 px) waren die Zeilen nur 58 px hoch (gemessen)
+            className="flex w-full min-h-[64px]! items-center gap-3 rounded-2xl border border-border bg-surface px-4 py-2.5 text-left transition-colors hover:border-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-default disabled:hover:border-border"
+        >
+            {inhalt}
+            {laedt ? (
+                <Loader2 className="h-5 w-5 flex-shrink-0 animate-spin text-primary motion-reduce:animate-none" aria-hidden="true" />
+            ) : (
+                <ChevronRight className="h-5 w-5 flex-shrink-0 text-text-secondary" aria-hidden="true" />
+            )}
+        </button>
     );
 }
 
@@ -191,13 +234,17 @@ export function Handelsregister({ scanId, website, start, onNochmals, onBestaeti
         return { res, daten };
     };
 
-    const bestaetigen = async () => {
-        if (!auswahl || laeuft || !scanId) return;
+    /*
+     * [09.11.2026] Warum: AUFTRAG-123 (Z4.3) — mit Kennung aufrufbar: im Kompaktmodus wählt und bestätigt ein Tipp auf eine
+     * Trefferzeile in einem Schritt (gleiche Logik wie «Ja, das ist meine Firma» mit dieser UID).
+     */
+    const bestaetigeUid = async (uid: string | null) => {
+        if (!uid || laeuft || !scanId) return;
         setLaeuft('bestaetige');
         setFehler(null);
         setPasstNicht(null);
         try {
-            const { res, daten } = await post({ bestaetige: auswahl });
+            const { res, daten } = await post({ bestaetige: uid });
             if (res.ok && daten?.bestaetigt && daten.scan_id === scanId) {
                 onBestaetigt(daten.bestaetigt as HrBestaetigt, scanId);
                 return;
@@ -214,6 +261,7 @@ export function Handelsregister({ scanId, website, start, onNochmals, onBestaeti
             setLaeuft(null);
         }
     };
+    const bestaetigen = () => bestaetigeUid(auswahl);
 
     const suchen = async (e: FormEvent) => {
         e.preventDefault();
@@ -239,7 +287,11 @@ export function Handelsregister({ scanId, website, start, onNochmals, onBestaeti
                 if (antwort && antwort.ergebnis === 'treffer' && antwort.treffer.some((t) => t.aktiv)) setVorschlaege({ basis: start, antwort });
                 setAntwort(daten as HrAntwort);
                 setWahl(null);
-                if ((daten as HrAntwort).ergebnis === 'treffer') setSuchOffen(false);
+                if ((daten as HrAntwort).ergebnis === 'treffer') {
+                    setSuchOffen(false);
+                    // [09.11.2026] Warum: AUFTRAG-123 — mobil verschwindet das Suchformular samt Fokus; Fokus auf den Titel des Blatts
+                    if (kompakt) setTimeout(() => (document.querySelector('[data-handelsregister] #ki-demo-anruf-titel') as HTMLElement | null)?.focus({ preventScroll: true }), 0);
+                }
                 return;
             }
             if (res.status === 429 && antwort) setAntwort({ ...antwort, versuche_rest: 0 });
@@ -260,7 +312,21 @@ export function Handelsregister({ scanId, website, start, onNochmals, onBestaeti
             setAntwort({ ...vorschlag, versuche_rest: rest });
             setWahl(null);
         }
-        setTimeout(() => (document.querySelector('[data-handelsregister] input[type="radio"]:not(:disabled)') as HTMLInputElement | null)?.focus(), 0);
+        // AUFTRAG-123: im Kompaktmodus gibt es keine Radios — Fokus auf den Titel des Blatts (ohne Scrollen)
+        setTimeout(
+            () =>
+                kompakt
+                    ? (document.querySelector('[data-handelsregister] #ki-demo-anruf-titel') as HTMLElement | null)?.focus({ preventScroll: true })
+                    : (document.querySelector('[data-handelsregister] input[type="radio"]:not(:disabled)') as HTMLInputElement | null)?.focus(),
+            0,
+        );
+    };
+
+    const oeffneSuche = () => {
+        setSuchOffen(true);
+        setFehler(null);
+        setPasstNicht(null);
+        setTimeout(() => document.getElementById('ki-demo-hr-suche')?.focus(), 0);
     };
 
     const titel =
@@ -288,8 +354,200 @@ export function Handelsregister({ scanId, website, start, onNochmals, onBestaeti
 
     const passt = passtNicht ? websitePasstNichtTeile(passtNicht.website, passtNicht.firma) : null;
 
+    // Meldung ohne aktive Einträge (bestehender Text, wortgleich)
+    const ohneAktiveText = ohneAktive
+        ? `${
+              ergebnis === 'kein_treffer'
+                  ? rest < MANUELL_MAX
+                      ? 'Zu dieser Eingabe haben wir im Handelsregister keinen Eintrag gefunden.'
+                      : 'Zu Ihrer Website haben wir im Handelsregister keinen passenden Eintrag gefunden.'
+                  : HR_TEXT.aktivNoetig
+          }${rest > 0 ? ' Geben Sie den Firmennamen oder die UID ein, dann suchen wir nochmals.' : ''}`
+        : null;
+
+    if (kompakt) {
+        /*
+         * [09.11.2026] Warum: AUFTRAG-123 (Z3/Z4) — Blatt im Kompaktmodus. Genau ein aktiver Treffer: T1 + ruhige Karte +
+         * «Ja, das ist meine Firma»; mehrere: Liste antippbarer Zeilen (role=list), kein «Ja»-Knopf. Bei 409 wird «Andere
+         * Website eingeben» die Haupthandlung (ein erneutes «Ja» liefe wieder in den Fehler). Suchformular untereinander,
+         * «Suchen» als Haupthandlung; «Noch n Versuche» rechts neben der Feldbeschriftung (keine zweite Hilfszeile).
+         */
+        const listeOffen = (ergebnis === 'treffer' || ergebnis === 'nicht_aktiv') && treffer.length > 0 && !listeZu;
+        const einer = ergebnis === 'treffer' && !listeZu && aktive.length === 1;
+        const mehrere = listeOffen && !einer;
+        const hilfe = ergebnis === 'treffer' && !listeZu ? HR_KOMPAKT.herkunft : ohneAktive && !ausgeschoepft ? ohneAktiveText : null;
+        const fehlerZeile = fehler && (
+            <p role="alert" className="mt-3 flex-shrink-0 text-sm font-medium text-red-700 dark:text-red-300">
+                {fehler}
+            </p>
+        );
+        const passtMeldung = passt && (
+            <p role="alert" data-hr-passt-nicht="" className="mt-4 flex-shrink-0 rounded-2xl border border-red-200 dark:border-red-900/60 bg-red-50 dark:bg-red-950/40 px-4 py-3 text-sm text-red-800 dark:text-red-200">
+                {passt[0]}
+                <strong className="font-semibold">{passt[1]}</strong>
+                {passt[2]}
+                <strong className="font-semibold">{passt[3]}</strong>
+                {passt[4]}
+            </p>
+        );
+        const andereWebsiteKnopf = (
+            <button type="button" onClick={onAndereWebsite} className={KNOPF} id="ki-demo-hr-andere-website" data-blatt-haupt="">
+                <Globe className="w-5 h-5" aria-hidden="true" />
+                {HR_SCHRITT.andereWebsite}
+            </button>
+        );
+        return (
+            <div data-handelsregister={ergebnis} data-hr-liste={listeZu ? 'zu' : 'offen'} className="flex min-h-0 flex-1 flex-col">
+                <h2 id="ki-demo-anruf-titel" tabIndex={-1} className={TITEL_KOMPAKT}>
+                    {einer ? HR_KOMPAKT.titelEiner : titel}
+                </h2>
+                {hilfe && (
+                    <p className={HILFE_KOMPAKT} data-blatt-hilfe="">
+                        {hilfe}
+                    </p>
+                )}
+
+                {hinweis && ergebnis !== 'pruefen' && (
+                    <p role="alert" className="mt-3 flex-shrink-0 text-sm font-medium text-red-700 dark:text-red-300">
+                        {hinweis}
+                    </p>
+                )}
+
+                {/* Während der Prüfung ist das Blatt unsichtbar (KiDemo: data-blatt="pruefen"); das Telefon zeigt den Stand */}
+                {ergebnis === 'pruefen' && (
+                    <p role="status" className="mt-4 flex items-center gap-3 rounded-2xl bg-surface border border-border px-4 py-4 text-text-secondary">
+                        <Loader2 className="w-5 h-5 flex-shrink-0 text-primary motion-safe:animate-spin" aria-hidden="true" />
+                        Wir gleichen Ihre Website mit dem Handelsregister ab …
+                    </p>
+                )}
+
+                {(ergebnis === 'netz' || ergebnis === 'nicht_erreichbar') && (
+                    <>
+                        <p role="alert" className="mt-4 rounded-2xl border border-amber-200 dark:border-amber-900/60 bg-amber-50 dark:bg-amber-950/30 px-4 py-3 text-sm text-amber-900 dark:text-amber-100">
+                            {ergebnis === 'netz' ? NETZ : HR_TEXT.nichtErreichbar}
+                        </p>
+                        <button type="button" onClick={onNochmals} className={`${KNOPF} mt-4`} id="ki-demo-hr-nochmals" data-blatt-haupt="">
+                            <RotateCcw className="w-5 h-5" aria-hidden="true" />
+                            Nochmals prüfen
+                        </button>
+                    </>
+                )}
+
+                {einer && (
+                    <>
+                        <div data-hr-eintrag="" data-uid={aktive[0].uid} className="mt-4 flex-shrink-0 rounded-2xl border border-border bg-surface px-4 py-3">
+                            <p data-hr-name="" className="line-clamp-2 text-[1.0625rem] font-semibold leading-snug text-text-primary">
+                                {aktive[0].name}
+                            </p>
+                            <p className="mt-0.5 text-sm text-text-secondary tabular-nums">
+                                {aktive[0].sitz || 'unbekannt'} · {aktive[0].uid_formatiert}
+                            </p>
+                        </div>
+                        {passtMeldung}
+                        {fehlerZeile}
+                        <div className="mt-4 flex-shrink-0">
+                            {passt ? (
+                                andereWebsiteKnopf
+                            ) : (
+                                <button type="button" onClick={bestaetigen} disabled={!auswahl || !!laeuft} className={KNOPF} id="ki-demo-hr-bestaetigen" data-blatt-haupt="">
+                                    {laeuft === 'bestaetige' ? <Loader2 className="w-5 h-5 animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <Check className="w-5 h-5" aria-hidden="true" />}
+                                    Ja, das ist meine Firma
+                                </button>
+                            )}
+                            {rest > 0 && (
+                                <button type="button" onClick={oeffneSuche} className={TEXTLINK_KOMPAKT} id="ki-demo-hr-andere" data-blatt-link="">
+                                    Nein, andere Firma suchen
+                                </button>
+                            )}
+                        </div>
+                    </>
+                )}
+
+                {mehrere && (
+                    <>
+                        {/* nur diese Hülle scrollt (flex 1 1 auto, min-height 0), Schattenrand unten aus A-121 */}
+                        <div ref={listeRef} className={`${styles.hrListe} mt-4`} data-hr-liste-scroll="">
+                            <ul role="list" aria-label="Einträge im Handelsregister" className="space-y-2">
+                                {treffer.map((t) => (
+                                    <li key={t.uid}>
+                                        <Zeile t={t} gesperrt={!!laeuft} laedt={laeuft === 'bestaetige' && wahl === t.uid} onTipp={() => {
+                                                if (laeuft) return;
+                                                setWahl(t.uid);
+                                                void bestaetigeUid(t.uid);
+                                            }}
+                                        />
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                        {passtMeldung}
+                        {!suchFormular && fehlerZeile}
+                        {passt && <div className="mt-4 flex-shrink-0">{andereWebsiteKnopf}</div>}
+                        {ergebnis === 'treffer' && rest > 0 && (
+                            <button type="button" onClick={oeffneSuche} className={`${TEXTLINK_KOMPAKT} flex-shrink-0`} id="ki-demo-hr-andere" data-blatt-link="">
+                                Meine Firma ist nicht dabei
+                            </button>
+                        )}
+                    </>
+                )}
+
+                {suchFormular && (
+                    <form onSubmit={suchen} noValidate className="mt-4 flex-shrink-0" aria-label="Firma im Handelsregister suchen">
+                        <div className="mb-2 flex items-baseline justify-between gap-3">
+                            <label htmlFor="ki-demo-hr-suche" className="text-sm font-medium text-text-primary">
+                                Firmenname oder UID
+                            </label>
+                            <span id="ki-demo-hr-versuche" className="flex-shrink-0 text-xs text-text-secondary">
+                                {versucheText(rest)}
+                            </span>
+                        </div>
+                        <div className="relative">
+                            <Building2 className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-text-secondary" aria-hidden="true" />
+                            <input
+                                id="ki-demo-hr-suche"
+                                type="text"
+                                value={suche}
+                                onChange={(e) => setSuche(e.target.value)}
+                                maxLength={120}
+                                autoComplete="organization"
+                                placeholder="z. B. Muster AG oder CHE-123.456.789"
+                                aria-describedby="ki-demo-hr-versuche"
+                                className="w-full h-[48px] pl-11 pr-3 rounded-xl border border-border bg-background text-text-primary text-base placeholder:text-text-secondary/70 focus:outline-none focus:border-primary"
+                            />
+                        </div>
+                        {fehlerZeile}
+                        <button type="submit" disabled={!!laeuft} className={`${KNOPF} mt-4`} id="ki-demo-hr-suchen" data-blatt-haupt="">
+                            {laeuft === 'suche' ? <Loader2 className="w-5 h-5 animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <Search className="w-5 h-5" aria-hidden="true" />}
+                            Suchen
+                        </button>
+                    </form>
+                )}
+
+                {zurueck && (
+                    <button type="button" onClick={zurueckZuVorschlaegen} className={`${TEXTLINK_KOMPAKT} flex-shrink-0`} id="ki-demo-hr-zurueck" data-blatt-link="">
+                        {HR_SCHRITT.zurueck}
+                    </button>
+                )}
+
+                {!einer && !mehrere && !suchFormular && fehlerZeile}
+
+                {ausgeschoepft && (
+                    <>
+                        <p role="alert" className="mt-4 rounded-2xl border border-red-200 dark:border-red-900/60 bg-red-50 dark:bg-red-950/40 px-4 py-3 text-sm text-red-800 dark:text-red-200">
+                            {HR_TEXT.aktivNoetig} Gerne zeigen wir Ihnen den Assistenten persönlich.
+                        </p>
+                        <Link href={`/kontakt?subject=${encodeURIComponent('KI-Telefonassistent')}`} className={`${KNOPF} mt-4`} id="ki-demo-hr-kontakt" data-blatt-haupt="">
+                            Kontakt aufnehmen
+                            <ArrowRight className="w-5 h-5 flex-shrink-0" aria-hidden="true" />
+                        </Link>
+                    </>
+                )}
+            </div>
+        );
+    }
+
     return (
-        <div data-handelsregister={ergebnis} data-hr-liste={listeZu ? 'zu' : 'offen'} className={kompakt ? 'flex flex-col flex-1 min-h-0' : undefined}>
+        <div data-handelsregister={ergebnis} data-hr-liste={listeZu ? 'zu' : 'offen'}>
             <h2 id="ki-demo-anruf-titel" className="text-xl sm:text-2xl font-bold text-text-primary tracking-tight">
                 {titel}
             </h2>
@@ -326,7 +584,7 @@ export function Handelsregister({ scanId, website, start, onNochmals, onBestaeti
             )}
 
             {(ergebnis === 'treffer' || ergebnis === 'nicht_aktiv') && treffer.length > 0 && !listeZu && (
-                <div className={kompakt ? 'mt-3 flex flex-col flex-1 min-h-0' : 'mt-4'}>
+                <div className="mt-4">
                     <p className="text-sm text-text-secondary" id="ki-demo-hr-untertitel">
                         {untertitel}
                     </p>
@@ -335,33 +593,20 @@ export function Handelsregister({ scanId, website, start, onNochmals, onBestaeti
                             {HR_SCHRITT.leseHinweis}
                         </p>
                     )}
-                    {(() => {
-                        const liste = (
-                            <fieldset className={kompakt ? 'space-y-2 min-w-0' : 'mt-3 space-y-2.5 min-w-0'} aria-label="Einträge im Handelsregister">
-                                {treffer.map((t) => (
-                                    <Eintrag
-                                        key={t.uid}
-                                        t={t}
-                                        name={radioName}
-                                        gewaehlt={auswahl === t.uid}
-                                        kompakt={kompakt}
-                                        onWahl={() => {
-                                            setWahl(t.uid);
-                                            setPasstNicht(null);
-                                        }}
-                                    />
-                                ))}
-                            </fieldset>
-                        );
-                        // AUFTRAG-121 (K3.1): im Kompaktmodus scrollt nur diese Hülle (flex 1 1 auto, min-height 0)
-                        return kompakt ? (
-                            <div ref={listeRef} className={`${styles.hrListe} mt-2`} data-hr-liste-scroll="">
-                                {liste}
-                            </div>
-                        ) : (
-                            liste
-                        );
-                    })()}
+                    <fieldset className="mt-3 space-y-2.5 min-w-0" aria-label="Einträge im Handelsregister">
+                        {treffer.map((t) => (
+                            <Eintrag
+                                key={t.uid}
+                                t={t}
+                                name={radioName}
+                                gewaehlt={auswahl === t.uid}
+                                onWahl={() => {
+                                    setWahl(t.uid);
+                                    setPasstNicht(null);
+                                }}
+                            />
+                        ))}
+                    </fieldset>
                     {passt && (
                         <div className="mt-3 space-y-3" data-hr-passt-nicht="">
                             <p role="alert" className="rounded-2xl border border-red-200 dark:border-red-900/60 bg-red-50 dark:bg-red-950/40 px-4 py-3 text-sm text-red-800 dark:text-red-200">
@@ -381,23 +626,13 @@ export function Handelsregister({ scanId, website, start, onNochmals, onBestaeti
             )}
 
             {ergebnis === 'treffer' && !listeZu && (
-                <div className={kompakt ? 'mt-3 space-y-1 flex-shrink-0' : 'mt-5 space-y-3'}>
+                <div className="mt-5 space-y-3">
                     <button type="button" onClick={bestaetigen} disabled={!auswahl || !!laeuft} className={KNOPF} id="ki-demo-hr-bestaetigen">
                         {laeuft === 'bestaetige' ? <Loader2 className="w-5 h-5 animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <Check className="w-5 h-5" aria-hidden="true" />}
                         Ja, das ist meine Firma
                     </button>
                     {rest > 0 && (
-                        <button
-                            type="button"
-                            onClick={() => {
-                                setSuchOffen(true);
-                                setFehler(null);
-                                setPasstNicht(null);
-                                setTimeout(() => document.getElementById('ki-demo-hr-suche')?.focus(), 0);
-                            }}
-                            className={TEXTLINK}
-                            id="ki-demo-hr-andere"
-                        >
+                        <button type="button" onClick={oeffneSuche} className={TEXTLINK} id="ki-demo-hr-andere">
                             {aktive.length > 1 ? 'Meine Firma ist nicht dabei' : 'Nein, andere Firma suchen'}
                         </button>
                     )}
@@ -476,7 +711,7 @@ export function Handelsregister({ scanId, website, start, onNochmals, onBestaeti
                 </div>
             )}
 
-            <p className={kompakt ? 'mt-auto pt-1 text-xs text-text-secondary flex-shrink-0' : 'mt-5 text-xs text-text-secondary'}>{HR_TEXT.datenschutz}</p>
+            <p className="mt-5 text-xs text-text-secondary">{HR_TEXT.datenschutz}</p>
         </div>
     );
 }

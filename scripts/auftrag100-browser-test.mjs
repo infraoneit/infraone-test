@@ -68,6 +68,12 @@
  * - T3 mobil: Das Telefon ist mobil wieder gerendert, aber als Bühne unter der Kompaktzeile (ganz im Bild, ≤ 300 px), die
  *   Karte liegt unten darüber; während des Anrufs gibt es keine Karte (und damit keinen Anruf-Knopf) — der Anrufstand wird an
  *   der Statuszeile (data-zustand) abgewartet. Keine Sprünge, Statuszeile wie A-121.
+ *
+ * ANPASSUNG AUFTRAG-123 ([09.11.2026] Warum: AUFTRAG-123 ruhige Bühne):
+ * - T3 mobil: Die Statuszeile erscheint nur noch, wenn die Bühne (das Telefon) nicht im Bild ist — der Test scrollt während
+ *   des Vollscans das Telefon aus dem Bild (Statuszeile mit Schritt und Fund) und wieder zurück (weg). «bereit» ist erst
+ *   ein Kurzblatt («Lena ist bereit» / «Lena soll mich anrufen»), Antippen klappt das Formular aus. Das Blatt liegt unten
+ *   in der Bühne, das Telefon darüber nie angeschnitten. Desktop-Teile (T1/T2, Menü) unverändert.
  */
 import { chromium } from 'playwright-core';
 import { registerHooks } from 'node:module';
@@ -719,65 +725,84 @@ async function teilT3(browser, { theme, ruhig = false }) {
     let s = await statusZeile(page);
     check(`${name}: eingabe – keine Statuszeile`, s && !s.sichtbar, JSON.stringify(s));
     await page.tap('#ki-demo-scan-knopf');
-    await warte(page, 1200);
+    // A-123: Firmen-Blatt abwarten, dann die Bewegung (Blatt 420 ms, Telefon-Skala 450 ms) ausklingen lassen
+    await page.locator('section[data-blatt="firma"]').waitFor({ state: 'visible', timeout: 15000 });
+    await warte(page, 700);
     s = await statusZeile(page);
     const yScan = await page.evaluate(() => window.scrollY);
-    // [09.11.2026] Warum: AUFTRAG-121 Kompaktmodus, kein Scrollen mobil — statt des A-120-Sprungs zur Karte klappt der Hero zu,
-    // die Aktionskarte steht ohne Scrollen ganz im Bild. [09.11.2026] Warum: AUFTRAG-122 Telefon als Bühne, Karte darüber — das
-    // Telefon ist wieder gerendert, ganz im Bild (≤ 300 px breit), die Karte liegt unten darüber
-    const karte = await page.evaluate(() => {
-        const r = document.querySelector('section[aria-labelledby="ki-demo-anruf-titel"]').getBoundingClientRect();
-        const t = document.querySelector('figure[aria-label^="Vorschau"]')?.getBoundingClientRect();
-        return { top: Math.round(r.top * 10) / 10, bottom: Math.round(r.bottom * 10) / 10, telefon: t ? { top: Math.round(t.top * 10) / 10, bottom: Math.round(t.bottom * 10) / 10, breite: Math.round(t.width * 10) / 10 } : null };
-    });
+    // [09.11.2026] Warum: AUFTRAG-121 Kompaktmodus, kein Scrollen mobil — statt des A-120-Sprungs zur Karte klappt der Hero zu.
+    // AUFTRAG-122: Telefon als Bühne. [09.11.2026] Warum: AUFTRAG-123 ruhige Bühne — das Blatt (Höhe = Inhalt) liegt unten in
+    // der Bühne, das Telefon skaliert sich darüber und wird nie angeschnitten (oder blendet aus); die Statuszeile erscheint nur,
+    // wenn die Bühne nicht im Bild ist.
+    const lage = () =>
+        page.evaluate(() => {
+            const k = document.querySelector('section[aria-labelledby="ki-demo-anruf-titel"]');
+            const r = k?.getBoundingClientRect();
+            const f = document.querySelector('figure[aria-label^="Vorschau"]');
+            const t = f?.getBoundingClientRect();
+            const cs = f ? getComputedStyle(f) : null;
+            return {
+                top: r ? Math.round(r.top * 10) / 10 : null,
+                bottom: r ? Math.round(r.bottom * 10) / 10 : null,
+                telefon: t ? { top: Math.round(t.top * 10) / 10, bottom: Math.round(t.bottom * 10) / 10, grundBreite: f.offsetWidth, aus: cs.opacity === '0' || cs.visibility === 'hidden' } : null,
+            };
+        });
+    const karte = await lage();
     check(
-        `${name}: Scan-Start ohne Sprung (scrollY ${yVorher} → ${yScan}), Karte ganz im Bild (${karte.top}–${karte.bottom} px), Telefon als Bühne darunter ganz im Bild`,
-        yScan === yVorher && karte.top >= 112 && karte.bottom <= 812 && !!karte.telefon && karte.telefon.breite <= 300 && karte.telefon.top >= 112 && karte.telefon.bottom <= 812 && karte.telefon.top < karte.top,
+        `${name}: Scan-Start ohne Sprung (scrollY ${yVorher} → ${yScan}), Blatt ganz im Bild (${karte.top}–${karte.bottom} px), Telefon (Grundbreite ≤ 300 px) darüber nie angeschnitten`,
+        yScan === yVorher && karte.top >= 112 && karte.bottom <= 812 && !!karte.telefon && karte.telefon.grundBreite <= 300 && karte.telefon.top >= 112 && (karte.telefon.aus || karte.telefon.bottom <= karte.top - 8),
         JSON.stringify(karte),
     );
-    check(`${name}: Statuszeile oben (unter dem Header, 48 px) mit Schritt`, s.sichtbar && s.hoehe === 48 && Math.abs(s.top - s.kopfUnten) <= 1 && /^Schritt \d von 8/.test(s.kopf), JSON.stringify(s));
+    check(`${name}: Statuszeile unsichtbar, solange die Bühne im Bild ist (A-123 Z1.1)`, s && !s.sichtbar, JSON.stringify(s));
     await firmaBestaetigen(page);
-    // AUFTRAG-120: der Fund «Markenfarbe» steht nur einen Takt (~360 ms) — Statuszeile abfragen, bis er erscheint
+    // A-123 (Z1.1): die Statuszeile erscheint, sobald das Telefon aus dem Bild gescrollt ist (Bühne noch im Bild) — dann mit
+    // Schritt und Fund. AUFTRAG-120: der Fund «Markenfarbe» steht nur einen Takt (~360 ms) — abfragen, bis er erscheint
+    await warte(page, 300);
+    await page.evaluate(() => window.scrollTo({ top: 600, behavior: 'instant' }));
     await page
         .waitForFunction(() => /Markenfarbe #1E3A5F/.test(document.querySelector('button[data-sichtbar="true"]')?.textContent ?? ''), null, { timeout: 20000, polling: 30 })
         .catch(() => undefined);
     s = await statusZeile(page);
-    check(`${name}: Statuszeile zeigt den Fund («Markenfarbe #1E3A5F»)`, s.sichtbar && /Markenfarbe #1E3A5F/.test(s.text), `${s.kopf} | ${s.text}`);
+    check(`${name}: Telefon aus dem Bild gescrollt → Statuszeile oben (unter dem Header, 48 px) mit Schritt und Fund («Markenfarbe #1E3A5F»)`, s.sichtbar && s.hoehe === 48 && Math.abs(s.top - s.kopfUnten) <= 1 && /Markenfarbe #1E3A5F/.test(s.text), `${s.kopf} | ${s.text} · ${JSON.stringify(s)}`);
     if (ruhig) check(`${name}: reduzierte Bewegung – Statuszeile ohne Verschiebung`, s.transform === 'none', s.transform);
     await shot(page, `${name}-1-statuszeile-scan.png`);
-    await page.locator('#ki-demo-anruf-knopf[data-zustand="bereit"]').waitFor({ state: 'attached', timeout: 30000 });
+    await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
+    await warte(page, 500);
+    s = await statusZeile(page);
+    check(`${name}: zurück oben (Bühne im Bild) → Statuszeile wieder weg`, !s.sichtbar, JSON.stringify(s));
+    // A-123 (Z5.1): «bereit» erst als Kurzblatt
+    await page.locator('#ki-demo-bereit-knopf').waitFor({ state: 'visible', timeout: 30000 });
     await warte(page, 700);
     const yBereit = await page.evaluate(() => window.scrollY);
     s = await statusZeile(page);
-    check(`${name}: bereit – kein automatischer Sprung, Statuszeile «Lena ist bereit»`, Math.abs(yBereit - yScan) <= 1 && s.sichtbar && s.text === 'Lena ist bereit', `scrollY ${yScan} → ${yBereit}; ${s.kopf} | ${s.text}`);
-    await shot(page, `${name}-2-statuszeile-bereit.png`);
-    // [09.11.2026] Warum: AUFTRAG-121 (K2) — die Statuszeile springt mobil nirgends hin und zeigt rechts den Fortschritt statt
-    // «Zum Telefon»; Antippen ändert nichts (scrollY bleibt). AUFTRAG-122: unverändert, das Telefon ist als Bühne im Bild
-    await page.tap('button[class*="statuszeile"]', { force: true });
+    const kurz = await page.evaluate(() => document.querySelector('section[aria-labelledby="ki-demo-anruf-titel"]')?.innerText.replace(/\s+/g, ' ').trim());
+    check(`${name}: bereit – kein automatischer Sprung, Kurzblatt «Lena ist bereit / Lena soll mich anrufen», Statuszeile unsichtbar`, yBereit === 0 && !s.sichtbar && kurz === 'Lena ist bereit Lena soll mich anrufen', `scrollY ${yBereit}; ${kurz}; ${JSON.stringify(s)}`);
+    await shot(page, `${name}-2-kurzblatt.png`);
+    await page.tap('#ki-demo-bereit-knopf');
     await warte(page, ruhig ? 400 : 1100);
     const yTipp = await page.evaluate(() => window.scrollY);
-    const zeile = await page.evaluate(() => document.querySelector('button[class*="statuszeile"]').innerText.replace(/\s+/g, ' ').trim());
-    check(`${name}: Statuszeile ohne «Zum Telefon», mit Fortschritt 8/8; Antippen springt nicht (scrollY ${yBereit} → ${yTipp})`, !zeile.includes('Zum Telefon') && zeile.includes('8/8') && yTipp === yBereit, zeile);
-    await shot(page, `${name}-3-nach-antippen.png`);
+    await shot(page, `${name}-3-formular.png`);
     const knopf = await page.evaluate(() => Math.round(document.querySelector('#ki-demo-anruf-knopf').getBoundingClientRect().bottom));
-    check(`${name}: Formular – Anruf-Knopf ohne Scrollen ganz im Bild (unten ${knopf} px)`, knopf <= 812, String(knopf));
+    check(`${name}: Formular nach dem Antippen – kein Sprung (scrollY ${yTipp}), Anruf-Knopf ohne Scrollen ganz im Bild (unten ${knopf} px)`, yTipp === 0 && knopf <= 812, String(knopf));
     await anrufStarten(page);
     await warte(page, ruhig ? 400 : 1100);
-    // AUFTRAG-121: kein Sprung zum Telefon mehr, die Statuszeile bleibt. [09.11.2026] Warum: AUFTRAG-122 Telefon als Bühne, Karte
-    // darüber — während des Anrufs keine Karte (kein Anruf-Knopf): das Telefon zeigt den Stand, abgewartet über die Statuszeile
+    // AUFTRAG-121: kein Sprung zum Telefon mehr. AUFTRAG-122/123: während des Anrufs kein Blatt, das Telefon zeigt den Stand
+    // (Skala 1); die Statuszeile bleibt unsichtbar (Telefon im Bild) — der Anrufstand wird an ihrem data-zustand abgewartet
     const yAnruf = await page.evaluate(() => window.scrollY);
     s = await statusZeile(page);
     const ohneKarte = await page.evaluate(() => !document.querySelector('section[aria-labelledby="ki-demo-anruf-titel"]') && !!document.querySelector('figure[aria-label^="Vorschau"]'));
-    check(`${name}: Anruf-Knopf ohne Sprung (scrollY ${yAnruf}), Statuszeile «Testanruf», keine Karte über dem Telefon`, yAnruf === yBereit && s.sichtbar && s.kopf === 'Testanruf' && ohneKarte, `${s.kopf} | ${s.text} | ohne Karte ${ohneKarte}`);
+    const l = await lage();
+    check(`${name}: Anruf-Knopf ohne Sprung (scrollY ${yAnruf}), kein Blatt, Telefon ganz im Bild, Statuszeile unsichtbar (Stand «${s.kopf}»)`, yAnruf === 0 && !s.sichtbar && s.kopf === 'Testanruf' && ohneKarte && !l.telefon.aus && l.telefon.bottom <= 812, `${s.kopf} | ${s.text} | ohne Karte ${ohneKarte} | ${JSON.stringify(l.telefon)}`);
     await page.locator('button[class*="statuszeile"][data-zustand="waehlt"]').waitFor({ state: 'attached', timeout: 30000 });
     await warte(page, 400);
     s = await statusZeile(page);
-    check(`${name}: Anruf – «Ihr Telefon klingelt …»`, s.sichtbar && s.text === 'Ihr Telefon klingelt …', `${s.kopf} | ${s.text}`);
+    const telWaehlt = await page.evaluate(() => [...document.querySelectorAll('figure [aria-hidden="false"]')].map((a) => a.innerText).join(' ').replace(/\s+/g, ' '));
+    check(`${name}: Anruf – Telefon «Anruf von …», Statuszeile (unsichtbar) mit «Ihr Telefon klingelt …»`, /Anruf von/.test(telWaehlt) && !s.sichtbar && s.text === 'Ihr Telefon klingelt …', `${s.kopf} | ${s.text} | ${telWaehlt.slice(0, 80)}`);
     await page.locator('button[class*="statuszeile"][data-zustand="verbunden"]').waitFor({ state: 'attached', timeout: 30000 });
     await warte(page, 2300);
     s = await statusZeile(page);
-    check(`${name}: verbunden – Stand und Dauer («Verbunden – 0:0x», «Sie sprechen mit Lena»)`, s.sichtbar && /^Verbunden – 0:0\d$/.test(s.kopf) && s.text === 'Sie sprechen mit Lena', `${s.kopf} | ${s.text}`);
-    await shot(page, `${name}-4-statuszeile-anruf.png`);
+    check(`${name}: verbunden – Stand und Dauer («Verbunden – 0:0x», «Sie sprechen mit Lena») in der (unsichtbaren) Statuszeile`, !s.sichtbar && /^Verbunden – 0:0\d$/.test(s.kopf) && s.text === 'Sie sprechen mit Lena', `${s.kopf} | ${s.text}`);
+    await shot(page, `${name}-4-anruf.png`);
     // weit nach unten (FAQ): Statuszeile weg
     await page.evaluate(() => document.querySelector('details').scrollIntoView());
     await warte(page, 400);

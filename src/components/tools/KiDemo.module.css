@@ -65,42 +65,84 @@
  * Telefon vor Karte): das Telefon oben, Breite aus der Bühnenhöhe (ganz sichtbar, ohne Transform); die Karte unten
  * bündig darüber. In passiven Phasen (Vollscan nach der Bestätigung, Anruf) rendert KiDemo.tsx keine Karte. Die Karte
  * ist eine Überlagerung: Ein- und Ausblenden verschiebt das Telefon nie (CLS 0).
+ *
+ * [09.11.2026] Warum: AUFTRAG-123 ruhige Bühne — «es ist unübersichtlich» (Inhaber). Ein Gedanke pro Moment: die Bühne ist das
+ * sichtbare Fenster (kein 560-px-Boden), die Kompaktzeile sitzt direkt unter dem Header, die Statuszeile erscheint nur, wenn
+ * die Bühne nicht im Bild ist (KiDemo.tsx). Das Blatt hat die Höhe seines Inhalts; das Telefon skaliert sich per Transform
+ * ganz darüber (nie angeschnitten) oder blendet aus. Alles nur im Kompaktmodus unter 1024 px; die Desktop-Blöcke unten
+ * bleiben byte-gleich.
  */
 @media (max-width: 1023px) {
     .buehne[data-kompakt='true'] {
-        /* S1: Bühnenhöhe = Fensterhöhe − (Statuszeile unten 7rem + max(1rem, Notch) + 0.5rem + 44 px + 0.5rem) − 0.75rem Luft unten */
-        --buehne-h: max(560px, calc(100vh - 8.75rem - 44px - max(1rem, env(safe-area-inset-top))));
         /*
-         * S4.1: feste Höhe der Karte im Firmen-Schritt (Laden, 1/5 Treffer, nicht gefunden) als Anteil der Bühne — die
-         * Karte wächst beim Eintreffen der Registerantwort nicht (CLS 0). Auftrag: 62 %. Gemessen mit 1 Treffer, Liste
-         * sichtbar/Inhalt in px (360×740 / 375×812 / 390×844): 62 % → 36/52, 35/58, 55/58 (scrollt überall); 64 % → 47/52,
-         * 48/58 (scrollt), 68/68; 66 % → 58/58, 60/60, 81/81 (passt überall). Kleinster Wert in 2-%-Schritten, der auf allen
-         * drei passt: 66 % (Karte 369,6 / 403,9 / 425 px). Beleg: PHASE=prozent im A-121/122-Test, A122-bericht.md.
+         * [09.11.2026] Warum: AUFTRAG-123 (Z1.3) — Bühne = sichtbares Fenster, ohne den 560-px-Boden aus A-122 (echte Handys
+         * zeigen mit Browserleisten nur ≈ 550–730 px; mit max(560px, …) war die Seite dort länger als das Fenster und rutschte).
+         * Lage bei Seite ganz oben, hergeleitet aus den echten Massen: Header fix, h-16 (4rem) + padding-top max(1rem, Notch)
+         * (globals.css) → Unterkante 4rem + max(1rem, Notch); Kompaktzeile 12 px darunter, 44 px hoch; Bühne 8 px darunter bis
+         * 12 px über dem Fensterrand → Höhe = 100dvh − 4rem − max(1rem, Notch) − (12 + 44 + 8 + 12 = 76) px.
+         * Gemessen (Playwright, 1rem = 16 px bzw. 14 px unter 375 px Breite): 360×640 → Bühne 134–628 (494 px), 375×553 →
+         * 144–541 (397), 390×664 → 144–652 (508), 375×812 → 144–800 (656), 768×1024 → 144–1012 (868).
+         * Untergrenze 320 px nur gegen Querformat und Mini-Fenster — dort darf die Seite scrollen (nicht optimiert).
          */
-        --karte-firma: 0.66;
+        --buehne-h: max(320px, calc(100vh - 4rem - max(1rem, env(safe-area-inset-top)) - 76px));
+        /*
+         * [09.11.2026] Warum: AUFTRAG-123 (Z2.6, gemessen) — kleinste Layout-Breite des Telefons. Bei 375×553 ergäbe die Formel
+         * 192 px: dort laufen Telefon-Ansichten über (Nummer «+41 44 552 03 06» breiter als der Bildschirm, Ansicht «verbunden»
+         * 386 > 378 px, die Scan-Liste drückt die Welle zusammen = Layout-Shift). Statt Telefon.tsx zu ändern, wird das Telefon
+         * nie schmaler als 240 px gelegt (bei 360×640 mit 239 px ohne Befund gemessen) und per Transform eingepasst (Skala in
+         * KiDemo.tsx: verfügbare Höhe ÷ Telefonhöhe). Greift nur bei Bühnen unter 496 px. 0px = reine Formel aus dem Auftrag.
+         */
+        --telefon-min-b: 240px;
         grid-template-areas: 'kompakt' 'buehne';
         grid-template-rows: auto var(--buehne-h);
-        row-gap: 0.5rem;
+        /* Z1.3: Bühne 8 px unter der Kompaktzeile (fest in px, auch bei 14-px-Grundschrift) */
+        row-gap: 8px;
     }
     @supports (height: 100dvh) {
         .buehne[data-kompakt='true'] {
-            --buehne-h: max(560px, calc(100dvh - 8.75rem - 44px - max(1rem, env(safe-area-inset-top))));
+            --buehne-h: max(320px, calc(100dvh - 4rem - max(1rem, env(safe-area-inset-top)) - 76px));
         }
     }
-    /* S1/S2: Telefon oben in der Bühne, waagrecht zentriert (Flex), Breite aus der Bühnenhöhe — Höhe = Breite × 18,6 / 9 */
+    /* S1/S2: Telefon oben in der Bühne, waagrecht zentriert (Flex), Grundbreite aus der Bühnenhöhe — Höhe = Breite × 18,6 / 9 */
     .buehne[data-kompakt='true'] > .telefonBereich {
         grid-area: buehne;
         align-self: start;
     }
     .buehne[data-kompakt='true'] .telefonHuelle {
-        width: min(100%, 300px, calc(var(--buehne-h) * 9 / 18.6));
+        width: min(100%, 300px, max(var(--telefon-min-b), calc(var(--buehne-h) * 9 / 18.6)));
+        /*
+         * [09.11.2026] Warum: AUFTRAG-123 (Z2) — liegt ein Blatt in der Bühne, verkleinert sich das Telefon weich (wie iOS bei
+         * einem Sheet), bis es ganz darüber passt: --telefon-skala setzt KiDemo.tsx (ResizeObserver; ohne Blatt 1). Nie
+         * angeschnitten; unter 0,32 blendet es aus (data-telefon-aus). Transform verschiebt kein Layout.
+         */
+        transform: scale(var(--telefon-skala, 1));
+        transform-origin: top center;
+        transition:
+            transform 450ms cubic-bezier(0.32, 0.72, 0, 1),
+            opacity 200ms linear,
+            visibility 0s;
     }
-    /* S1: Handlungskarte unten bündig über dem Telefon */
+    /* Z2.3: ausgeblendet statt Briefmarke — unsichtbar erst nach der Bewegung, bleibt im DOM */
+    .buehne[data-kompakt='true'][data-telefon-aus='true'] .telefonHuelle {
+        opacity: 0;
+        visibility: hidden;
+        transition:
+            transform 450ms cubic-bezier(0.32, 0.72, 0, 1),
+            opacity 200ms linear,
+            visibility 0s linear 450ms;
+    }
+    /*
+     * S1: Handlungskarte (AUFTRAG-123: das Blatt) unten bündig über dem Telefon.
+     * [09.11.2026] Warum: AUFTRAG-123 (Z3/Z9.1) — die Höhe des Blatts folgt jetzt dem Inhalt und ändert sich auch ohne Eingabe
+     * (Antwort der Firmensuche, 409). Unten bündig über align-self: end hiesse: Oberkante wandert = Layout-Shift (gemessen
+     * CLS 0,0145 bei Suche → Treffer). Darum ist .aktion ein Anker mit Höhe 0 an der Unterkante der Bühne; das Blatt hängt
+     * per translateY(-100%) darüber. Seine Layout-Lage ändert sich nie, nur die Verschiebung (Transform = kein Shift).
+     */
     .buehne[data-kompakt='true'] > .aktion {
         grid-area: buehne;
         align-self: end;
         z-index: 1;
-        max-height: 100%;
+        height: 0;
     }
     .buehne[data-kompakt='true'] > .intro {
         position: absolute;
@@ -120,12 +162,19 @@
         grid-area: kompakt;
         /* fest 44 px (Touch-Ziel «Ändern»), auch wo die Seite die Grundschrift verkleinert (1rem = 14 px unter 375 px) */
         height: 44px;
-        /* Bühne beginnt bei 120 px, Statuszeile endet bei 7rem + max(1rem, Notch) → + 0.5rem Luft */
-        margin-top: max(1rem, env(safe-area-inset-top));
+        /*
+         * [09.11.2026] Warum: AUFTRAG-123 (Z1.2) — direkt unter dem Header: Oberkante = Header-Unterkante + 12 px. Kopplung:
+         * Das Raster beginnt auf der Seite bei body padding-top env(safe-area-inset-top) + <main> pt-20 (5rem) + Abschnitt
+         * pt-10 (2.5rem); der Header endet bei 4rem + max(1rem, Notch) → Rand = max(1rem, Notch) − Notch − 3.5rem + 12 px
+         * (ohne Notch −28 px bzw. −23 px bei 14-px-Grundschrift). Ändert sich main/Abschnitt/Header, hier nachziehen.
+         */
+        margin-top: calc(max(1rem, env(safe-area-inset-top)) - env(safe-area-inset-top) - 3.5rem + 12px);
     }
     /*
-     * S4: Höhe = Inhalt, höchstens die Bühne (danach scrollt nur die Karte, z. B. nach «Mehr anzeigen»); im
-     * Firmen-Schritt feste Höhe (data-karte aus KiDemo.tsx, nur mobil gesetzt).
+     * [09.11.2026] Warum: AUFTRAG-123 (Z3) — das Blatt: Höhe = Inhalt, höchstens die Bühne (erst darüber scrollt es intern bzw.
+     * nur seine Liste/Felder); keine feste Höhe mehr (66-%-Regel und --karte-firma aus A-122 entfallen). Erscheint neu
+     * gemountet von 24 px weiter unten und durchsichtig (420 ms, gleiche Kurve wie das Telefon); verschwindet ohne Animation.
+     * Während der Handelsregister-Prüfung (data-blatt="pruefen") unsichtbar — das Telefon zeigt den Stand.
      */
     .buehne[data-kompakt='true'] .aktionKarte {
         display: flex;
@@ -133,14 +182,11 @@
         max-height: var(--buehne-h);
         overflow-y: auto;
         overscroll-behavior: contain;
+        transform: translateY(-100%);
+        animation: blatt-rein 420ms cubic-bezier(0.32, 0.72, 0, 1) both;
     }
-    .buehne[data-kompakt='true'] .aktionKarte[data-karte='firma'] {
-        /*
-         * [09.11.2026] Manager-Nachtrag A-122 (offener Punkt 6): Deckel 28 rem, damit die Karte auf Tablets und sehr hohen
-         * Fenstern (Bühne > 679 px, z. B. 768×1024 → 544 px) nicht halb leer wird. Unter 679 px Bühne greift er nie
-         * (390×844: 66 % = 425 px, 68 % = 437,9 px < 448 px) — die Messwerte der Handy-Viewports bleiben gleich.
-         */
-        height: min(calc(var(--buehne-h) * var(--karte-firma)), 28rem);
+    .buehne[data-kompakt='true'] .aktionKarte[data-blatt='pruefen'] {
+        display: none;
     }
     /* K3.1: nur die Trefferliste scrollt (Flex 1 1 auto, min-height 0); 2 px Rand, damit Fokus- und Auswahlring nicht abgeschnitten werden */
     .hrListe {
@@ -173,13 +219,23 @@
     .statuszeile[data-kompakt='true'] {
         cursor: default;
     }
+    /* AUFTRAG-123 (Z2.4/Z3): reduzierte Bewegung — Telefon und Blatt ohne Übergang bzw. Einblenden (sofort) */
+    @media (prefers-reduced-motion: reduce) {
+        .buehne[data-kompakt='true'] .telefonHuelle,
+        .buehne[data-kompakt='true'][data-telefon-aus='true'] .telefonHuelle {
+            transition: none;
+        }
+        .buehne[data-kompakt='true'] .aktionKarte {
+            animation: none;
+        }
+    }
 }
 @media (min-width: 640px) and (max-width: 1023px) {
-    /* ab sm beginnt die Bühne 16 px tiefer (Abschnitt pt-14) */
+    /* AUFTRAG-123 (Z1.2): ab sm beginnt das Raster 16 px tiefer (Abschnitt pt-14 = 3.5rem statt pt-10) */
     .kompaktZeile {
-        margin-top: calc(max(1rem, env(safe-area-inset-top)) - 1rem);
+        margin-top: calc(max(1rem, env(safe-area-inset-top)) - env(safe-area-inset-top) - 4.5rem + 12px);
     }
-    /* [09.11.2026] Warum: AUFTRAG-122 (S4.5) — auf Tablets Karte höchstens 30 rem breit, zentriert über dem Telefon */
+    /* [09.11.2026] Warum: AUFTRAG-122 (S4.5) — auf Tablets Karte (AUFTRAG-123: Blatt) höchstens 30 rem breit, zentriert über dem Telefon */
     .buehne[data-kompakt='true'] > .aktion {
         justify-self: center;
         width: min(100%, 30rem);
@@ -756,6 +812,17 @@
     to {
         opacity: 1;
         transform: none;
+    }
+}
+/* [09.11.2026] Warum: AUFTRAG-123 (Z3) — Blatt erscheint (nur Kompaktmodus, siehe oben) */
+@keyframes blatt-rein {
+    from {
+        opacity: 0;
+        transform: translateY(calc(-100% + 24px));
+    }
+    to {
+        opacity: 1;
+        transform: translateY(-100%);
     }
 }
 
