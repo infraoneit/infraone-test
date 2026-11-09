@@ -29,6 +29,10 @@
  *
  * [09.11.2026] Warum: AUFTRAG-123b Feinschliff — Schwelle 0,36 statt 0,32 (keine Briefmarke), 409-Haupthandlung ohne
  * Globus (einzeilig), kürzerer Such-Platzhalter, Ende/Fehler mit EINER Haupthandlung und einem Textlink darunter.
+ *
+ * [09.11.2026] Warum: AUFTRAG-123c «Zeigen oder fragen» — entweder erzählt das Telefon (lesbar) und ein kurzes Blatt liegt
+ * darunter, oder es ist kein Platz für ein lesbares Telefon (sichtbare Breite < 110 px statt Skala < 0,36): dann füllt das Blatt
+ * die ganze Bühne (kein leerer Streifen darüber). Ende im Füllmodus ohne Zeilenbegrenzung, 409-Meldung mobil kurz.
  */
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type FormEvent, type ReactNode } from 'react';
 import Link from 'next/link';
@@ -122,9 +126,17 @@ const BEREIT_TEXT = {
  * Telefon aus (keine Briefmarke). Z3: Schatten des Blatts nach oben (dunkel kräftiger).
  * [09.11.2026] Warum: AUFTRAG-123b (N1) — Schwelle 0,36 statt 0,32: bei 0,327 (Formular 393×727) und 0,341 (430×739) war das
  * Telefon nur noch ≈ 90 × 190 px gross (Briefmarke, A-123 O3). Firmen-Schritt (390×664: 0,383) und Kurzblätter bleiben sichtbar.
+ * [09.11.2026] Warum: AUFTRAG-123c (N7) — Pixel-Schwelle statt Skala: Das Telefon blendet aus, wenn seine SICHTBARE Breite
+ * (Grundbreite × Skala) unter 110 px fällt. Unter ≈ 110 px ist der Bildschirminhalt unlesbar (Briefmarke), egal bei welcher Skala;
+ * die relative Schwelle liess je nach Grundbreite 91 px sichtbar und 96 px ausgeblendet (A-123b O-b4). Ersetzt TELEFON_MIN_SKALA.
+ * AUFTRAG-123c (N6): Füllmodus des Blatts wächst/schrumpft mit derselben Kurve und Dauer wie das Telefon (CSS .telefonHuelle).
  */
 const TELEFON_LUFT = 12;
-const TELEFON_MIN_SKALA = 0.36;
+const TELEFON_MIN_BREITE = 110;
+const BLATT_KURVE = 'cubic-bezier(0.32, 0.72, 0, 1)';
+const BLATT_DAUER = 450;
+/** AUFTRAG-123c (N6): animiert wird ein Füll-Wechsel nur so kurz nach einer Eingabe (sonst Layout-Shift ausserhalb des 500-ms-Fensters) */
+const BLATT_EINGABE_MS = 50;
 const BLATT_SCHATTEN = 'shadow-[0_-12px_40px_-16px_rgba(10,18,10,0.35)] dark:shadow-[0_-12px_40px_-12px_rgba(0,0,0,0.8)]';
 const BLATT_TITEL = 'text-[1.375rem] font-bold leading-tight tracking-tight text-text-primary focus:outline-none';
 /** [09.11.2026] Warum: AUFTRAG-123b (N4) — Textlink unter der Haupthandlung (zentriert, Trefferfläche 44 px; wie im Firmen-Blatt) */
@@ -884,6 +896,8 @@ export function KiDemo({ children, turnstileSiteKey, begruessungNachStimme = fal
     const [mehrOffen, setMehrOffen] = useState(false);
     const [zfLang, setZfLang] = useState(false);
     const zfRef = useRef<HTMLParagraphElement>(null);
+    // AUFTRAG-123c (N6): Kasten der Zusammenfassung (Schattenrand im Füllmodus)
+    const zfKastenRef = useRef<HTMLDivElement>(null);
 
     const andereWebsite = () => {
         // neuer Lauf: verspätete Antworten des bisherigen Scans werden verworfen
@@ -1237,12 +1251,31 @@ export function KiDemo({ children, turnstileSiteKey, begruessungNachStimme = fal
 
     /*
      * [09.11.2026] Warum: AUFTRAG-123 (Z2) — das Telefon wird nie vom Blatt angeschnitten. Mobil (Kompaktmodus) skaliert es
-     * sich per Transform (Ursprung oben Mitte, CSS) auf s = min(1, (Bühnenhöhe − Blatthöhe − 12 px) / Telefonhöhe); unter
-     * TELEFON_MIN_SKALA (0,36, AUFTRAG-123b N1) blendet es aus (data-telefon-aus, bleibt im DOM). Ohne Blatt
+     * sich per Transform (Ursprung oben Mitte, CSS) auf s = min(1, (Bühnenhöhe − Blatthöhe − 12 px) / Telefonhöhe). Ohne Blatt
      * s = min(1, Bühnenhöhe / Telefonhöhe): 1, ausser die Mindestbreite (CSS --telefon-min-b, sehr niedrige Fenster wie 375×553) macht das Telefon höher als die Bühne.
      * Gemessen per ResizeObserver an Bühne, Telefon und Blatt (Blatt mit display: none = Höhe 0 = kein Blatt). Gesetzt direkt
      * an der Bühne (--telefon-skala) und vor dem Zeichnen, damit Blatt und Skala im selben Bild gelten. Transform verschiebt
-     * kein Layout (CLS 0). Am Desktop weder Variable noch Attribut.
+     * kein Layout (CLS 0). Am Desktop weder Variable noch Attribute.
+     *
+     * [09.11.2026] Warum: AUFTRAG-123c «Zeigen oder fragen» — nie ein Briefmarken-Telefon, nie leere Fläche über dem Blatt:
+     *   - N7: Das Telefon blendet aus (data-telefon-aus, bleibt im DOM), wenn seine sichtbare Breite (Grundbreite × Skala) unter
+     *     TELEFON_MIN_BREITE (110 px) fällt — vorher Skala < 0,36 (AUFTRAG-123b N1).
+     *   - N6: Ist es aus, füllt das Blatt die ganze Bühne (data-fuellen am Blatt; CSS: min-height = Bühnenhöhe, Inhalt oben,
+     *     Haupthandlung und Textlink unten) statt einen leeren Streifen darüber zu lassen (A-123b: 100–200 px).
+     *   - Keine Rückkopplung: Entschieden wird nach der NATÜRLICHEN Blatthöhe. Dafür nimmt rechnen() data-fuellen kurz weg, misst
+     *     und setzt es sofort wieder (synchron, kein Bild dazwischen; Scrollstände der Hüllen bleiben). Alles, was die Füllung
+     *     ändert, hängt im CSS an diesem Attribut. data-telefon-aus/data-fuellen werden nur bei einem echten Wechsel geschrieben.
+     *   - Übergang: Wächst oder schrumpft ein stehendes Blatt, animiert eine Web Animation min-height von der alten zur neuen Höhe
+     *     (450 ms, Kurve des Telefons); bei reduzierter Bewegung sofort. Ein neu erscheinendes Blatt (neu gemountet oder nach der
+     *     Prüfung aus display: none) füllt ohne Wachsen — es blendet ein (Z3). Animiert wird nur ein Wechsel direkt auf eine
+     *     Eingabe (≤ 50 ms nach Tipp/Taste): Chrome zählt die stehen bleibenden Handlungen unten im wachsenden Blatt als
+     *     Layout-Shift, sobald die Bewegung über das 500-ms-Fenster nach der Eingabe hinausläuft (gemessen: CLS 0,05 beim Firmen-
+     *     Blatt ohne Eingabe). Ein Wechsel aus einer Serverantwort (z. B. 409) gilt deshalb sofort. Während der Animation wird nicht
+     *     gemessen (sie verfälschte die Höhe), danach einmal.
+     *   - Auslöser: ResizeObserver (Bühne, Telefon, Blatt) und ein MutationObserver am Blatt (Inhalt und data-blatt) — ein
+     *     Inhaltswechsel im gefüllten Blatt ändert dessen Höhe nicht und bliebe sonst unbemerkt (Wechsel zu einem kürzeren Inhalt).
+     *     Fällt ein Wechsel im ResizeObserver auf, gilt er erst im nächsten Bild (eine Grössenänderung im eigenen Callback wäre eine
+     *     RO-Schleife).
      */
     useLayoutEffect(() => {
         const buehne = buehneRef.current;
@@ -1250,30 +1283,101 @@ export function KiDemo({ children, turnstileSiteKey, begruessungNachStimme = fal
         if (!kompakt) {
             buehne.style.removeProperty('--telefon-skala');
             buehne.removeAttribute('data-telefon-aus');
+            aktionRef.current?.removeAttribute('data-fuellen');
             return;
         }
         const figur = telefonRef.current?.firstElementChild as HTMLElement | null;
         const blatt = karteDa ? aktionRef.current : null;
-        const rechnen = () => {
+        let aktiv = true;
+        let bild = 0;
+        let anim: Animation | null = null;
+        // war das Blatt bei der letzten Rechnung sichtbar (Höhe > 0)? Nur dann wächst/schrumpft es animiert
+        let sichtbar = false;
+        // Zeitpunkt der letzten Eingabe (Tipp, Klick, Taste): animiert wird nur ein Wechsel direkt darauf
+        let eingabe = -Infinity;
+        const eingabeMerken = () => {
+            eingabe = performance.now();
+        };
+        const rechnen = (anwenden: boolean, animieren: boolean) => {
+            if (!aktiv || anim) return;
             const zeilen = getComputedStyle(buehne).gridTemplateRows.split(' ');
             const buehneH = parseFloat(zeilen[zeilen.length - 1]) || 0;
             const telefonH = figur?.offsetHeight ?? 0;
-            const blattH = blatt?.offsetHeight ?? 0;
+            const telefonB = figur?.offsetWidth ?? 0;
+            // natürliche Blatthöhe: ohne Füllung gemessen (N6, keine Rückkopplung)
+            const fuellt = !!blatt && blatt.getAttribute('data-fuellen') === 'true';
+            let blattH = blatt?.offsetHeight ?? 0;
+            if (blatt && fuellt) {
+                const huellen = [blatt, ...blatt.querySelectorAll<HTMLElement>('[data-blatt-scroll], [data-hr-liste-scroll]')];
+                const stand = huellen.map((h) => h.scrollTop);
+                blatt.removeAttribute('data-fuellen');
+                blattH = blatt.offsetHeight;
+                blatt.setAttribute('data-fuellen', 'true');
+                huellen.forEach((h, i) => {
+                    if (h.scrollTop !== stand[i]) h.scrollTop = stand[i];
+                });
+            }
             const verfuegbar = blattH > 0 ? buehneH - blattH - TELEFON_LUFT : buehneH;
             // 0,5 px Toleranz: Breite × 18,6 / 9 rundet minimal über die Bühnenhöhe (sonst Skala 0,999 ohne Blatt)
             const s = telefonH > 0 && (blattH > 0 || telefonH > buehneH + 0.5) ? Math.min(1, Math.max(0, verfuegbar / telefonH)) : 1;
             // abgerundet: die Luft zum Blatt bleibt ≥ 12 px
-            buehne.style.setProperty('--telefon-skala', String(Math.floor(s * 1000) / 1000));
-            if (s < TELEFON_MIN_SKALA) buehne.setAttribute('data-telefon-aus', 'true');
-            else buehne.removeAttribute('data-telefon-aus');
+            const skala = Math.floor(s * 1000) / 1000;
+            buehne.style.setProperty('--telefon-skala', String(skala));
+            // N7: sichtbare Breite unter 110 px → aus (ohne Blatt nie: dort ist die Skala ≥ 0,8)
+            const aus = blattH > 0 && telefonB * skala < TELEFON_MIN_BREITE;
+            const istAus = buehne.getAttribute('data-telefon-aus') === 'true';
+            const warSichtbar = sichtbar;
+            if (aus === istAus && (!blatt || aus === fuellt)) {
+                sichtbar = blattH > 0;
+                return;
+            }
+            if (!anwenden) {
+                cancelAnimationFrame(bild);
+                bild = requestAnimationFrame(() => rechnen(true, true));
+                return;
+            }
+            sichtbar = blattH > 0;
+            const vorher = blatt?.offsetHeight ?? 0;
+            if (aus !== istAus) {
+                if (aus) buehne.setAttribute('data-telefon-aus', 'true');
+                else buehne.removeAttribute('data-telefon-aus');
+            }
+            if (!blatt || aus === fuellt) return;
+            if (aus) blatt.setAttribute('data-fuellen', 'true');
+            else blatt.removeAttribute('data-fuellen');
+            if (!animieren || !warSichtbar || performance.now() - eingabe > BLATT_EINGABE_MS || vorher <= 0 || typeof blatt.animate !== 'function' || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+            const nachher = blatt.offsetHeight;
+            if (Math.abs(nachher - vorher) < 1) return;
+            const a = blatt.animate([{ minHeight: `${vorher}px` }, { minHeight: `${nachher}px` }], { duration: BLATT_DAUER, easing: BLATT_KURVE, id: 'blatt-fuellen' });
+            anim = a;
+            a.finished.then(
+                () => {
+                    if (anim !== a) return;
+                    anim = null;
+                    rechnen(true, true);
+                },
+                () => {
+                    if (anim === a) anim = null;
+                },
+            );
         };
-        rechnen();
-        if (typeof ResizeObserver === 'undefined') return;
-        const ro = new ResizeObserver(rechnen);
-        ro.observe(buehne);
-        if (figur) ro.observe(figur);
-        if (blatt) ro.observe(blatt);
-        return () => ro.disconnect();
+        rechnen(true, false);
+        for (const art of ['pointerup', 'click', 'keydown']) document.addEventListener(art, eingabeMerken, { capture: true, passive: true });
+        const ro = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(() => rechnen(false, true));
+        ro?.observe(buehne);
+        if (figur) ro?.observe(figur);
+        if (blatt) ro?.observe(blatt);
+        const mo = blatt && typeof MutationObserver !== 'undefined' ? new MutationObserver(() => rechnen(true, true)) : null;
+        // Inhalt und Art des Blatts (data-blatt: «pruefen» → sichtbar); nicht data-fuellen/data-telefon-aus (sonst Schleife)
+        if (blatt) mo?.observe(blatt, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['data-blatt'] });
+        return () => {
+            aktiv = false;
+            for (const art of ['pointerup', 'click', 'keydown']) document.removeEventListener(art, eingabeMerken, { capture: true });
+            cancelAnimationFrame(bild);
+            anim?.cancel();
+            ro?.disconnect();
+            mo?.disconnect();
+        };
     }, [kompakt, karteDa]);
 
     // [09.11.2026] Warum: AUFTRAG-123 (Z5.2) — nach dem Antippen des Kurzblatts (bzw. «Nochmals versuchen») Fokus auf den Titel
@@ -1619,10 +1723,13 @@ export function KiDemo({ children, turnstileSiteKey, begruessungNachStimme = fal
     const kurzBlatt = () => {
         const n = kartenAnzeige?.name ?? '';
         return (
-            <div data-ki-demo-kurzblatt="" className="flex flex-col">
+            // [09.11.2026] Warum: AUFTRAG-123c (N6) — falls auch hier das Telefon ausblendet (sehr niedrige Fenster, Querformat), füllt
+            // das Blatt die Bühne: Titel oben, Haupthandlung unten (Lücke wächst; ohne Füllung 0 px, gleich wie bisher)
+            <div data-ki-demo-kurzblatt="" className="flex min-h-0 flex-1 flex-col">
                 <h2 id="ki-demo-anruf-titel" className={BLATT_TITEL}>
                     {BEREIT_TEXT.kurzTitel(n)}
                 </h2>
+                <div aria-hidden="true" data-blatt-luecke="" className="grow" />
                 <button
                     type="button"
                     id="ki-demo-bereit-knopf"
@@ -1802,8 +1909,11 @@ export function KiDemo({ children, turnstileSiteKey, begruessungNachStimme = fal
                         {fehlerGrundText(auftrag?.grund)}
                     </p>
                 ) : (
-                    // AUFTRAG-123 (Z7): höchstens sechs Zeilen; nach «Mehr anzeigen» scrollt nur dieser Kasten, die Knöpfe bleiben im Bild
-                    <div data-blatt-scroll="" className="mt-4 min-h-0 overflow-y-auto overscroll-contain rounded-2xl bg-surface border border-border p-4">
+                    // AUFTRAG-123 (Z7): höchstens sechs Zeilen; nach «Mehr anzeigen» scrollt nur dieser Kasten, die Knöpfe bleiben im Bild.
+                    // [09.11.2026] Warum: AUFTRAG-123c (N6) — im Füllmodus (Telefon aus) ohne Zeilenbegrenzung und ohne «Mehr anzeigen» (CSS
+                    // an data-fuellen): der Kasten nimmt den freien Platz bis zur Haupthandlung (nicht darüber hinaus, ist der Text kürzer,
+                    // ist er so hoch wie der Text) und scrollt bei längerem Text allein, mit Schattenrand unten (zfKastenRef, data-ueberlauf)
+                    <div ref={zfKastenRef} data-blatt-scroll="" data-ki-demo-zf-kasten="" className={`${styles.zfKasten} mt-4 min-h-0 overflow-y-auto overscroll-contain rounded-2xl bg-surface border border-border p-4`}>
                         <p ref={zfRef} data-ki-demo-zusammenfassung="" className={`text-[0.9375rem] text-text-primary leading-relaxed ${mehrOffen ? '' : 'line-clamp-6'}`}>
                             {auftrag?.zusammenfassung ?? ZUSAMMENFASSUNG_FOLGT}
                         </p>
@@ -1811,6 +1921,7 @@ export function KiDemo({ children, turnstileSiteKey, begruessungNachStimme = fal
                             <button
                                 type="button"
                                 id="ki-demo-mehr"
+                                data-blatt-mehr=""
                                 onClick={() => setMehrOffen(true)}
                                 className="inline-flex min-h-[44px] items-center text-sm font-semibold text-text-primary underline underline-offset-2 hover:no-underline"
                             >
@@ -1862,8 +1973,32 @@ export function KiDemo({ children, turnstileSiteKey, begruessungNachStimme = fal
     useLayoutEffect(() => {
         const el = zfRef.current;
         if (zfText === null || !el || mehrOffen) return;
-        setZfLang(el.scrollHeight > el.clientHeight + 1);
+        // [09.11.2026] Warum: AUFTRAG-123c (N6) — an sechs Zeilenhöhen gemessen statt an der gekürzten Höhe: im Füllmodus ist die
+        // Zeilenbegrenzung aus (CSS), das Ergebnis muss trotzdem dasselbe sein (natürliche Blatthöhe mit «Mehr anzeigen», s. N6)
+        const zeile = parseFloat(getComputedStyle(el).lineHeight);
+        setZfLang(el.scrollHeight > (Number.isFinite(zeile) ? zeile * 6 : el.clientHeight) + 1);
     }, [zfText, mehrOffen]);
+    /*
+     * [09.11.2026] Warum: AUFTRAG-123c (N6) — Schattenrand unten am Zusammenfassungs-Kasten (wie Trefferliste/.blattRest), genau
+     * dann, wenn im Füllmodus noch Text unter dem Rand liegt (und nicht ans Ende gescrollt). Ohne Füllung (Tablet) wie bisher ohne.
+     */
+    useEffect(() => {
+        const el = zfKastenRef.current;
+        if (!kompakt || zustand !== 'beendet' || !el) return;
+        const pruefen = () => {
+            const fuellt = aktionRef.current?.getAttribute('data-fuellen') === 'true';
+            el.setAttribute('data-ueberlauf', fuellt && el.scrollHeight - el.clientHeight - el.scrollTop > 2 ? 'true' : 'false');
+        };
+        pruefen();
+        el.addEventListener('scroll', pruefen, { passive: true });
+        const ro = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(pruefen);
+        ro?.observe(el);
+        if (el.firstElementChild) ro?.observe(el.firstElementChild);
+        return () => {
+            el.removeEventListener('scroll', pruefen);
+            ro?.disconnect();
+        };
+    }, [kompakt, zustand]);
 
     return (
         <div className={styles.buehne} ref={buehneRef} data-kompakt={kompakt ? 'true' : undefined}>
@@ -2056,7 +2191,9 @@ export function KiDemo({ children, turnstileSiteKey, begruessungNachStimme = fal
                             // AUFTRAG-112: Fehler im Vollscan (Stufe 2) — Hinweis mit dem Servertext unter der bestätigten Firma
                             // [09.11.2026] Warum: AUFTRAG-123 (Z3) — mobil als Blatt: Titel, Meldung, «Nochmals versuchen» als Haupthandlung
                             // (ohne die Zeile «Handelsregister: …»)
-                            <div data-vollscan-fehler="">
+                            // [09.11.2026] Warum: AUFTRAG-123c (N6) — mobil als Spalte mit Lücke: im Füllmodus Meldung oben, Haupthandlung unten.
+                            // Klassen und Lücke nur im Kompaktmodus (am Desktop unverändert)
+                            <div data-vollscan-fehler="" className={kompakt ? 'flex min-h-0 flex-1 flex-col' : undefined}>
                                 <h2 id="ki-demo-anruf-titel" className={kompakt ? BLATT_TITEL : 'text-xl sm:text-2xl font-bold text-text-primary tracking-tight'}>
                                     Ihr Testanruf
                                 </h2>
@@ -2064,6 +2201,7 @@ export function KiDemo({ children, turnstileSiteKey, begruessungNachStimme = fal
                                 <p role="alert" className="mt-4 rounded-2xl border border-red-200 dark:border-red-900/60 bg-red-50 dark:bg-red-950/40 px-4 py-3 text-sm text-red-800 dark:text-red-200">
                                     {vollFehler}
                                 </p>
+                                {kompakt && <div aria-hidden="true" data-blatt-luecke="" className="grow" />}
                                 <button
                                     type="button"
                                     onClick={vollscanNochmals}

@@ -132,6 +132,12 @@ export const HR_KOMPAKT = {
      * Desktop-Platzhalter «z. B. Muster AG oder CHE-123.456.789» war mobil am Ende abgeschnitten (A-123 O6).
      */
     platzhalter: 'z. B. Muster AG',
+    /**
+     * [09.11.2026] Warum: AUFTRAG-123c (N8, wortgleich vom Manager) — 409 «Website passt nicht» im Kompaktmodus kurz: Was zu tun
+     * ist, sagen die Haupthandlung («Andere Website eingeben») und der Textlink. Teile wie websitePasstNichtTeile (Website und
+     * Firma fett). Ziel: Meldung bei 360×640 bis 430×739 ganz sichtbar, ohne Scrollen im Kasten. Desktop-Text unverändert.
+     */
+    passtNicht: (website: string, firma: string): [string, string, string, string, string] => ['', website, ' gehört laut Handelsregister nicht zu ', firma, '.'],
 } as const;
 
 export const HR_TEXT = {

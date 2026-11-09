@@ -8,12 +8,13 @@
  *
  * [09.11.2026] Warum: AUFTRAG-123 ruhige Bühne — ein Gedanke pro Moment. Das Telefon steht gross in der Bühne
  * (sichtbares Fenster ohne 560-px-Boden); braucht es eine Handlung, liegt unten EIN Blatt (Frage + Haupthandlung) und
- * das Telefon skaliert sich per Transform darüber (nie angeschnitten, unter 0,36 ausgeblendet — AUFTRAG-123b). Gemessen an
+ * das Telefon skaliert sich per Transform darüber (nie angeschnitten; ausgeblendet unter 110 px sichtbarer Breite — AUFTRAG-123c
+ * N7, vorher Skala 0,36 aus AUFTRAG-123b). Gemessen an
  * echten Handy-Höhen (360×640, 375×553, 390×664, 393×727, 430×739, 375×812) und am Tablet (768×1024); je Schritt die
  * Z9-Punkte als einzelne check()-Zeilen. Die A-122-Phase `prozent` ist entfallen (keine feste Kartenhöhe mehr).
  *
  * [09.11.2026] Warum: AUFTRAG-123b Feinschliff — zusätzlich geprüft:
- *   N1  Schwelle 0,36: in jedem Blatt-Schritt Telefon ausgeblendet genau dann, wenn die Skala < 0,36 ist.
+ *   N1  (abgelöst durch AUFTRAG-123c N7) Schwelle 0,36 als Skala.
  *   N2  409 «Andere Website eingeben» ohne Globus, einzeilig, 56 px — Läufe bei 360, 375, 390 und 430 px Breite.
  *   N3  Such-Platzhalter mobil «z. B. Muster AG», nicht abgeschnitten (Textbreite ≤ Innenbreite) — 360 und 390 px.
  *   N4  Ende: Haupthandlung «Angebot anfragen» (volle Breite, 56 px, Radius 16 px, #1f7a35), darunter Textlink
@@ -23,6 +24,20 @@
  *       O1)» protokolliert statt als Fehlschlag (derselbe Shift misst am Desktop, Telefon-Ansicht laut Auftrag tabu). Jede
  *       Quelle ausserhalb des Telefons, eine Quelle ohne Knoten oder eine Summe > 0,001 bleibt ein Fehlschlag.
  *
+ * [09.11.2026] Warum: AUFTRAG-123c «Zeigen oder fragen» — kein leerer Bühnenraum über dem Blatt. Zusätzlich geprüft:
+ *   N6  Füllmodus: in jedem Blatt-Schritt mit data-telefon-aus=true Oberkante Blatt = Oberkante Bühne ± 1 px und Unterkante =
+ *       Bühnen-Unterkante ± 1 px (data-fuellen); ist das Telefon sichtbar, ist das Blatt kurz (kein Füllmodus). Kein Element des
+ *       Blatts ausserhalb des Fensters. Kein Flackern: data-telefon-aus wechselt je Schritt höchstens einmal (MutationObserver).
+ *       Wachsen/Schrumpfen als Web Animation (min-height, 450 ms, Kurve des Telefons), reduzierte Bewegung: keine. Ende im
+ *       Füllmodus: kein «Mehr anzeigen», Kasten-Unterkante ≤ Oberkante Haupthandlung, Schattenrand genau dann, wenn der Text
+ *       überläuft; ein Lauf mit kurzem Gesprächstext (Kasten = Texthöhe). Mehrere Treffer: die Liste bekommt den Platz. Wechsel
+ *       Füllmodus → kurzes Blatt (Firma bestätigt → «Lena ist bereit»; 5 Treffer → «Meine Firma ist nicht dabei» und zurück):
+ *       Telefon wieder sichtbar, Blatt wieder kurz.
+ *   N7  Ist das Telefon sichtbar, ist seine sichtbare Breite (Grundbreite × Skala) ≥ 110 px; ist es aus, wäre sie < 110 px.
+ *       Messtabelle n7-tabelle.md (Skala und sichtbare Breite × Höhe je Blatt und Viewport).
+ *   N8  409 mobil kurz: «{website} gehört laut Handelsregister nicht zu {firma}.»; Meldung ganz sichtbar (scrollHeight ≤
+ *       clientHeight der Hülle) bei 360×640, 375×553, 390×664 und 430×739.
+ *
  *   PHASE=vorher  → nur Bilder (Stand vor der Änderung, 6682c0b): Desktop-Referenz, Handy 390×664 und 360×640 mit 1 und 5 Treffern
  *   PHASE=nachher → Z9 je Viewport und Schritt, Fälle (1/5 Treffer, Suche, 409, Anruf gescheitert), Statuszeile beim
  *                   Scrollen, Turnstile (Attrappe), Kontraste, reduzierte Bewegung, Tablet, Desktop pixelgenau gegen «vorher»,
@@ -31,7 +46,7 @@
  *                   Ablauf-Liste und im Telefon-Bildschirm (Desktop, damit das Telefon sichtbar ist)
  *
  *   $env:BASE_URL='http://localhost:3011'; $env:PHASE='nachher'; node scripts/auftrag121-browser-test.mjs
- *   Bilder: $env:SCREENS_DIR (Vorgabe auftraege/ergebnisse/A123b-screens); $env:NUR='390x664' nur diese Läufe
+ *   Bilder: $env:SCREENS_DIR (Vorgabe auftraege/ergebnisse/A123c-screens); $env:NUR='390x664' nur diese Läufe
  */
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -49,8 +64,13 @@ const CHROME = process.env.PLAYWRIGHT_CHROMIUM || 'C:/Program Files/Google/Chrom
 const SEITE = `${BASE}/ki-telefonassistent`;
 const ANRUF_VON = process.env.ERWARTE_ANRUF_VON || '+41 44 552 03 06';
 const NUR = process.env.NUR || null;
-/** [09.11.2026] Warum: AUFTRAG-123b (N1) — kleinste Telefon-Skala (KiDemo.tsx TELEFON_MIN_SKALA); N5 — Grenze für den bekannten Shift */
-const SKALA_MIN = 0.36;
+/**
+ * [09.11.2026] Warum: AUFTRAG-123c (N7) — kleinste sichtbare Telefon-Breite in px (KiDemo.tsx TELEFON_MIN_BREITE, ersetzt die
+ * Skala 0,36 aus AUFTRAG-123b N1); N6 — Kurve und Dauer von Telefon und Blatt; N5 — Grenze für den bekannten Shift
+ */
+const TELEFON_MIN_BREITE = 110;
+const KURVE = 'cubic-bezier(0.32, 0.72, 0, 1)';
+const DAUER = 450;
 const CLS_BEKANNT_MAX = 0.001;
 
 function ergebnisOrdner() {
@@ -61,8 +81,8 @@ function ergebnisOrdner() {
     }
     return path.join(ROOT, 'auftraege-ergebnisse');
 }
-// [09.11.2026] Warum: AUFTRAG-123 ruhige Bühne — Bilder unter A123-screens; AUFTRAG-123b: Vorgabe A123b-screens
-const SCREENS_BASIS = process.env.SCREENS_DIR || path.join(ergebnisOrdner(), 'A123b-screens');
+// [09.11.2026] Warum: AUFTRAG-123 ruhige Bühne — Bilder unter A123-screens; AUFTRAG-123b: Vorgabe A123b-screens; AUFTRAG-123c: A123c-screens
+const SCREENS_BASIS = process.env.SCREENS_DIR || path.join(ergebnisOrdner(), 'A123c-screens');
 const SCREENS = path.join(SCREENS_BASIS, PHASE);
 mkdirSync(SCREENS, { recursive: true });
 
@@ -126,6 +146,8 @@ function trefferListe(n) {
 // lange Zusammenfassung (mehr als sechs Zeilen) für «Mehr anzeigen»
 const ZUSAMMENFASSUNG =
     'Testgespräch (Attrappe im Browser). Die Anruferin wollte wissen, ob die Beispiel AG auch am Samstag Notfalleinsätze übernimmt. Lena hat die Öffnungszeiten Mo–Fr 07:30–17:00 genannt, auf den Pikettdienst hingewiesen und einen Rückruf für Montagmorgen notiert. Anliegen: defekter Sicherungskasten in einem Einfamilienhaus in Winterthur, keine Gefahr im Verzug. Kontakt: Frau Muster, Rückruf unter der angerufenen Nummer. Stimmung freundlich, Gespräch nach rund drei Minuten von der Anruferin beendet.';
+// [09.11.2026] Warum: AUFTRAG-123c (N6) — kurzer Gesprächstext: im Füllmodus ist der Kasten dann so hoch wie der Text
+const ZUSAMMENFASSUNG_KURZ = 'Testgespräch (Attrappe im Browser): Rückruf am Montagmorgen notiert.';
 const warte = (ms) => new Promise((ok) => setTimeout(ok, ms));
 // Vollscan (Stufe 2) antwortet erst nach ≥ 1500 ms, damit die passive Phase messbar ist
 const VOLLSCAN_MS = 2200;
@@ -134,7 +156,7 @@ const VOLLSCAN_MS = 2200;
  * fall: 'normal' (Treffer aus dem automatischen Abgleich), 'suche' (automatisch kein Treffer → eigene Suche → 1 Treffer),
  * 'passt_nicht' (Bestätigung → 409 website_passt_nicht)
  */
-async function apiAbfangen(page, { treffer = 1, fehler = false, fall = 'normal' } = {}) {
+async function apiAbfangen(page, { treffer = 1, fehler = false, fall = 'normal', kurzerText = false } = {}) {
     const z = { start: 0, anrufe: 0, fremd: [], hr: [], anrufKoerper: [] };
     await page.route('**/api/demo/**', (r) => {
         z.fremd.push(r.request().url());
@@ -200,7 +222,7 @@ async function apiAbfangen(page, { treffer = 1, fehler = false, fall = 'normal' 
                 status,
                 zeit: new Date().toISOString(),
                 dauer_s: status === 'beendet' ? 171 : null,
-                zusammenfassung: status === 'beendet' ? ZUSAMMENFASSUNG : null,
+                zusammenfassung: status === 'beendet' ? (kurzerText ? ZUSAMMENFASSUNG_KURZ : ZUSAMMENFASSUNG) : null,
                 grund: status === 'fehler' ? 'nicht_erreicht' : null,
             }),
         });
@@ -263,6 +285,33 @@ async function messe(page) {
             const innen = blattEl ? [...blattEl.querySelectorAll('[data-blatt-scroll]')] : [];
             const fokus = document.activeElement;
             const bcs = blattEl ? getComputedStyle(blattEl) : null;
+            // [09.11.2026] Warum: AUFTRAG-123c (N6) — sichtbare Teile aller Elemente des Blatts (beschnitten an Scroll-Hüllen bis zum
+            // Blatt) müssen im Fenster liegen; Screenreader-Texte (clip) zählen nicht
+            const aussen = [];
+            if (blattSichtbar) {
+                for (const el of [blattEl, ...blattEl.querySelectorAll('*')]) {
+                    const cs = getComputedStyle(el);
+                    if (cs.visibility === 'hidden' || cs.clip === 'rect(0px, 0px, 0px, 0px)' || el.closest('.sr-only')) continue;
+                    const r = el.getBoundingClientRect();
+                    if (!r.width || !r.height) continue;
+                    let o = r.top;
+                    let u = r.bottom;
+                    let l = r.left;
+                    let re = r.right;
+                    for (let a = el.parentElement; a && blattEl.contains(a); a = a.parentElement) {
+                        const acs = getComputedStyle(a);
+                        if (acs.overflowY !== 'visible' || acs.overflowX !== 'visible') {
+                            const ar = a.getBoundingClientRect();
+                            o = Math.max(o, ar.top);
+                            u = Math.min(u, ar.bottom);
+                            l = Math.max(l, ar.left);
+                            re = Math.min(re, ar.right);
+                        }
+                    }
+                    if (u - o <= 0.5 || re - l <= 0.5) continue;
+                    if (o < -0.5 || l < -0.5 || u > window.innerHeight + 0.5 || re > window.innerWidth + 0.5) aussen.push(`${el.tagName}${el.id ? '#' + el.id : ''} ${r1(o)}–${r1(u)} / ${r1(l)}–${r1(re)}`);
+                }
+            }
             return {
                 innerHeight: window.innerHeight,
                 innerWidth: window.innerWidth,
@@ -285,6 +334,10 @@ async function messe(page) {
                           visibility: fcs.visibility,
                           aus: fcs.opacity === '0' || fcs.visibility === 'hidden',
                           transition: fcs.transitionDuration,
+                          kurve: fcs.transitionTimingFunction,
+                          // AUFTRAG-123c (N7): sichtbare Grösse = Rechteck mit Transform
+                          sichtbareBreite: r1(fr.width),
+                          sichtbareHoehe: r1(fr.height),
                       }
                     : null,
                 telefonAnsicht: aktiv ? aktiv.innerText.replace(/\s+/g, ' ').trim().slice(0, 300) : null,
@@ -309,6 +362,9 @@ async function messe(page) {
                       }
                     : null,
                 blattArtImDom: blattEl?.getAttribute('data-blatt') ?? null,
+                fuellen: blattEl?.getAttribute('data-fuellen') ?? null,
+                aussen: aussen.slice(0, 6),
+                ausWechsel: (window.__ausWechsel ?? []).slice(),
                 status: status ? { sichtbar: status.getAttribute('data-sichtbar') === 'true', text: status.innerText.replace(/\s+/g, ' ').trim() } : null,
                 schrittzeile: !!document.querySelector('[data-ki-demo-schritt]'),
                 lesehinweis: !!document.querySelector('[data-hr-lesehinweis]'),
@@ -324,7 +380,7 @@ async function messe(page) {
 
 const tabelle = [];
 const lageText = (m) =>
-    `Bühne ${m.buehne?.top}–${m.buehne?.bottom} (${m.buehne?.hoehe}), Kompaktzeile ${m.kompakt?.top}–${m.kompakt?.bottom}, Telefon ${m.telefon?.top}–${m.telefon?.bottom} (Grund ${m.telefon?.basisBreite}×${m.telefon?.basisHoehe}, Skala ${m.telefon?.skala}, ${m.telefon?.aus ? 'aus' : 'sichtbar'}), Blatt ${m.blatt ? `${m.blatt.top}–${m.blatt.bottom} h${m.blatt.hoehe} (${m.blatt.art})` : 'keins'}, Fenster ${m.innerHeight}, scrollY ${m.scrollY}`;
+    `Bühne ${m.buehne?.top}–${m.buehne?.bottom} (${m.buehne?.hoehe}), Kompaktzeile ${m.kompakt?.top}–${m.kompakt?.bottom}, Telefon ${m.telefon?.top}–${m.telefon?.bottom} (Grund ${m.telefon?.basisBreite}×${m.telefon?.basisHoehe}, Skala ${m.telefon?.skala}, sichtbar ${m.telefon?.sichtbareBreite}×${m.telefon?.sichtbareHoehe}, ${m.telefon?.aus ? 'aus' : 'sichtbar'}), Blatt ${m.blatt ? `${m.blatt.top}–${m.blatt.bottom} h${m.blatt.hoehe} (${m.blatt.art}${m.fuellen === 'true' ? ', füllt' : ''})` : 'keins'}, Fenster ${m.innerHeight}, scrollY ${m.scrollY}`;
 
 /**
  * Z9.1–Z9.6 je Schritt als einzelne check()-Zeilen. passiv = Vollscan/Anruf (kein Blatt im DOM, Skala 1).
@@ -352,11 +408,27 @@ function pruefeSchritt(lauf, schritt, m, { passiv = false, blattErwartet = !pass
         !!t && (t.aus || (t.top >= (m.kompakt?.bottom ?? 0) - 0.5 && t.bottom <= grenze + 0.5)),
         lageText(m),
     );
-    // [09.11.2026] Warum: AUFTRAG-123b (N1) — Schwelle 0,36 (vorher 0,32): ausgeblendet genau dann, wenn die Skala darunter liegt
+    // [09.11.2026] Warum: AUFTRAG-123c (N7) — Pixel-Schwelle statt Skala (AUFTRAG-123b N1 0,36): ausgeblendet genau dann, wenn die
+    // sichtbare Breite (Grundbreite × Skala) unter 110 px läge; ist es sichtbar, misst sein Rechteck (mit Transform) ≥ 110 px
     if (m.blatt) {
         const s = parseFloat(m.skalaVar);
-        check(`${p} N1: Telefon ${t?.aus ? 'ausgeblendet' : 'sichtbar'} bei Skala ${m.skalaVar} (ausgeblendet genau unter ${SKALA_MIN})`, !!t && Number.isFinite(s) && t.aus === s < SKALA_MIN, lageText(m));
+        const breite = t ? Math.round(t.basisBreite * s * 10) / 10 : null;
+        check(
+            `${p} N7: Telefon ${t?.aus ? 'ausgeblendet' : 'sichtbar'} — sichtbare Breite ${breite} px (Grund ${t?.basisBreite} × Skala ${m.skalaVar}, Rechteck ${t?.sichtbareBreite}×${t?.sichtbareHoehe}) ${t?.aus ? '<' : '≥'} ${TELEFON_MIN_BREITE}`,
+            !!t && Number.isFinite(s) && t.aus === t.basisBreite * s < TELEFON_MIN_BREITE && (t.aus || t.sichtbareBreite >= TELEFON_MIN_BREITE - 0.5) && m.telefonAusAttr === (t.aus ? 'true' : null),
+            lageText(m),
+        );
+        // [09.11.2026] Warum: AUFTRAG-123c (N6) — Telefon aus → das Blatt füllt die ganze Bühne; Telefon sichtbar → das Blatt ist kurz
+        if (m.telefonAusAttr === 'true')
+            check(
+                `${p} N6 Füllmodus: Blatt füllt die Bühne — oben ${m.blatt.top} = Bühne ${m.buehne.top} ± 1, unten ${m.blatt.bottom} = ${m.buehne.bottom} ± 1 (data-fuellen)`,
+                m.fuellen === 'true' && Math.abs(m.blatt.top - m.buehne.top) <= 1 && Math.abs(m.blatt.bottom - m.buehne.bottom) <= 1,
+                lageText(m),
+            );
+        else check(`${p} N6: Telefon sichtbar → Blatt kurz unter dem Telefon (kein Füllmodus; Blatt oben ${m.blatt.top}, Telefon unten ${t?.bottom})`, m.fuellen !== 'true' && !!t && m.blatt.top >= t.bottom + 8 - 0.5, lageText(m));
+        check(`${p} N6: kein Element des Blatts ausserhalb des Fensters`, m.aussen.length === 0, m.aussen.join(' | '));
     }
+    if (m.ausWechselSchritt !== undefined) check(`${p} N6: kein Flackern — data-telefon-aus wechselt in diesem Schritt ${m.ausWechselSchritt}× (≤ 1)`, m.ausWechselSchritt <= 1, JSON.stringify(m.ausWechselListe));
     // Skala ohne Blatt = 1; nur wo die Mindestbreite (240 px) das Telefon höher als die Bühne macht (375×553), die Einpass-Skala
     if (passiv) check(`${p} Z9.4: passive Phase — kein Blatt im DOM, Skala ${einpass(m)} (ohne Blatt), Telefon sichtbar`, !m.blattImDom && Math.abs((t?.skala ?? 0) - einpass(m)) < 0.005 && !t?.aus, lageText(m));
     if (m.blatt)
@@ -381,6 +453,8 @@ function zeile(lauf, viewport, schritt, m) {
         schritt,
         buehne: m.buehne,
         telefon: m.telefon,
+        skalaVar: m.skalaVar,
+        fuellen: m.fuellen === 'true',
         blatt: m.blatt ? { top: m.blatt.top, hoehe: m.blatt.hoehe, art: m.blatt.art } : null,
         hauptUnten: m.blatt?.haupt.length ? Math.max(...m.blatt.haupt.map((h) => h.bottom)) : null,
         innerHeight: m.innerHeight,
@@ -508,7 +582,14 @@ function initSkript(theme) {
         addEventListener('scroll', () => { window.__maxScroll = Math.max(window.__maxScroll, scrollY); }, { passive: true });
         window.__cls = [];
         // [09.11.2026] Warum: AUFTRAG-123b (N5) — je Quelle zusätzlich, ob ihr Knoten in der Telefon-Figur liegt (imTelefon)
-        new PerformanceObserver((l) => { const fig = document.querySelector('figure[aria-label^="Vorschau"]'); for (const e of l.getEntries()) if (!e.hadRecentInput) window.__cls.push({ wert: e.value, zeit: Math.round(e.startTime), quellen: (e.sources || []).map((q) => (q.node?.nodeName ?? '?') + '.' + String(q.node?.className ?? '').slice(0, 50) + ' ' + Math.round(q.previousRect.top) + '→' + Math.round(q.currentRect.top) + ' h' + Math.round(q.previousRect.height) + '→' + Math.round(q.currentRect.height)), imTelefon: (e.sources || []).map((q) => !!fig && !!q.node && fig.contains(q.node)) }); }).observe({ type: 'layout-shift', buffered: true });`;
+        new PerformanceObserver((l) => { const fig = document.querySelector('figure[aria-label^="Vorschau"]'); for (const e of l.getEntries()) if (!e.hadRecentInput) window.__cls.push({ wert: e.value, zeit: Math.round(e.startTime), quellen: (e.sources || []).map((q) => (q.node?.nodeName ?? '?') + '.' + String(q.node?.className ?? '').slice(0, 50) + ' ' + Math.round(q.previousRect.top) + '→' + Math.round(q.currentRect.top) + ' h' + Math.round(q.previousRect.height) + '→' + Math.round(q.currentRect.height)), imTelefon: (e.sources || []).map((q) => !!fig && !!q.node && fig.contains(q.node)) }); }).observe({ type: 'layout-shift', buffered: true });
+        // [09.11.2026] Warum: AUFTRAG-123c (N6) — echte Wechsel von data-telefon-aus (Wert vorher ≠ nachher) und die Web Animationen
+        // des Blatts (id blatt-fuellen) mitschreiben
+        window.__ausWechsel = [];
+        new MutationObserver((recs) => recs.forEach((r, i) => { const n = recs.slice(i + 1).find((x) => x.target === r.target); const nach = n ? n.oldValue : r.target.getAttribute('data-telefon-aus'); if (r.oldValue !== nach) window.__ausWechsel.push({ zeit: Math.round(performance.now()), von: r.oldValue, nach }); })).observe(document, { subtree: true, attributes: true, attributeFilter: ['data-telefon-aus'], attributeOldValue: true });
+        window.__blattAnim = [];
+        const animOriginal = Element.prototype.animate;
+        Element.prototype.animate = function (kf, opt) { if (opt && opt.id === 'blatt-fuellen') window.__blattAnim.push({ zeit: Math.round(performance.now()), dauer: opt.duration, kurve: opt.easing, von: kf?.[0]?.minHeight ?? null, nach: kf?.[kf.length - 1]?.minHeight ?? null }); return animOriginal.call(this, kf, opt); };`;
 }
 
 const browser = await chromium.launch({ executablePath: CHROME, headless: true });
@@ -565,11 +646,11 @@ async function vorherLauf({ breite, hoehe, treffer }) {
  * fall 'suche' / 'passt_nicht', fehler = Anruf gescheitert. film = Bilder für den Filmstreifen.
  */
 async function mobilLauf(o) {
-    const { breite, hoehe, treffer = 1, theme = 'light', reduced = false, fall = 'normal', fehler = false, shots = false, film = false } = o;
+    const { breite, hoehe, treffer = 1, theme = 'light', reduced = false, fall = 'normal', fehler = false, shots = false, film = false, kurzerText = false } = o;
     const viewport = `${breite}×${hoehe}`;
-    const name = o.name ?? `${breite}x${hoehe}-${treffer}t-${theme === 'dark' ? 'dunkel' : 'hell'}${reduced ? '-ruhig' : ''}${fall !== 'normal' ? '-' + fall : ''}${fehler ? '-fehler' : ''}`;
+    const name = o.name ?? `${breite}x${hoehe}-${treffer}t-${theme === 'dark' ? 'dunkel' : 'hell'}${reduced ? '-ruhig' : ''}${fall !== 'normal' ? '-' + fall : ''}${fehler ? '-fehler' : ''}${kurzerText ? '-kurz' : ''}`;
     const { ctx, page, konsole } = await neueSeite({ breite, hoehe, theme, reduced });
-    const z = await apiAbfangen(page, { treffer, fehler, fall });
+    const z = await apiAbfangen(page, { treffer, fehler, fall, kurzerText });
     await page.goto(SEITE, { waitUntil: 'networkidle' });
     await page.evaluate(() => {
         window.scrollTo(0, 0);
@@ -585,6 +666,10 @@ async function mobilLauf(o) {
     };
     const mess = async (schritt, opt = {}) => {
         const m = await messe(page);
+        // AUFTRAG-123c (N6): Wechsel von data-telefon-aus seit dem letzten Messpunkt
+        m.ausWechselListe = m.ausWechsel.slice(lauf.ausBis ?? 0);
+        m.ausWechselSchritt = m.ausWechselListe.length;
+        lauf.ausBis = m.ausWechsel.length;
         if (m.maxScrollY > 0 && !lauf.ersterScroll) {
             lauf.ersterScroll = { schritt, max: m.maxScrollY };
             console.log(`INFO  [${name}] gescrollt (max ${m.maxScrollY}) spätestens bis Schritt «${schritt}»`);
@@ -702,6 +787,36 @@ async function mobilLauf(o) {
             JSON.stringify(firma.zeilen),
         );
         check(`[${name}] Z4.3: das Blatt höchstens Bühnenhöhe, ohne eigenes Scrollen; passt die Liste nicht, scrollt nur sie (Schattenrand)`, mf.blatt.hoehe <= mf.buehne.hoehe + 0.5 && mf.blatt.scrollH <= mf.blatt.clientH + 1 && !!firma.scroll && (firma.scroll.scrollH <= firma.scroll.clientH + 1 || firma.scroll.schatten === 'true'), JSON.stringify(firma.scroll));
+        // [09.11.2026] Warum: AUFTRAG-123c (N6) — mehrere Treffer im Füllmodus: die Liste bekommt den gewonnenen Platz (reicht bis zum
+        // Textlink, mehr Einträge ganz sichtbar). Vergleich ohne Füllung: data-fuellen im Test kurz weg und wieder da (synchron)
+        if (mf.telefonAusAttr === 'true') {
+            const liste = await page.evaluate((sel) => {
+                const b = document.querySelector(sel);
+                const s = b.querySelector('[data-hr-liste-scroll]');
+                const link = b.querySelector('#ki-demo-hr-andere');
+                const zaehle = () => {
+                    const r = s.getBoundingClientRect();
+                    const ganz = [...s.querySelectorAll('[data-hr-zeile]')].filter((x) => {
+                        const q = x.getBoundingClientRect();
+                        return q.top >= r.top - 0.5 && q.bottom <= r.bottom + 0.5;
+                    }).length;
+                    return { hoehe: Math.round(r.height * 10) / 10, unten: Math.round(r.bottom * 10) / 10, ganz };
+                };
+                const fuell = zaehle();
+                const linkOben = link ? Math.round(link.getBoundingClientRect().top * 10) / 10 : null;
+                const linkAbstand = link ? parseFloat(getComputedStyle(link).marginTop) : null;
+                b.removeAttribute('data-fuellen');
+                const natur = zaehle();
+                b.setAttribute('data-fuellen', 'true');
+                return { fuell, natur, linkOben, linkAbstand };
+            }, AKTION);
+            lauf.n6Liste = liste;
+            check(
+                `[${name}] N6 mehrere Treffer im Füllmodus: die Liste bekommt den Platz (Höhe ${liste.natur.hoehe} → ${liste.fuell.hoehe} px, ganz sichtbare Einträge ${liste.natur.ganz} → ${liste.fuell.ganz} von ${treffer}) und reicht bis zum Textlink`,
+                liste.fuell.hoehe >= liste.natur.hoehe - 0.5 && liste.fuell.ganz >= liste.natur.ganz && liste.linkOben !== null && Math.abs(liste.linkOben - liste.linkAbstand - liste.fuell.unten) <= 1,
+                JSON.stringify(liste),
+            );
+        }
     }
     check(`[${name}] Fokus: Titel des Firmen-Blatts (nicht im Telefon)`, firma.fokusTitel && !mf.fokus.imTelefon, JSON.stringify(mf.fokus));
     await bild('2-firma', 'Firma');
@@ -713,8 +828,8 @@ async function mobilLauf(o) {
         const mp = await mess('Firma (passt nicht, 409)');
         const jaDa = await page.locator('#ki-demo-hr-bestaetigen').count();
         check(
-            `[${name}] Z4.4 409: Meldung wortgleich (role=alert), Haupthandlung «Andere Website eingeben», kein «Ja»-Knopf, ein Textlink`,
-            /Die Website beispiel-ag\.ch gehört laut Handelsregister und Website-Inhalt nicht zu Muster Holding AG\. Bitte geben Sie die Website Ihrer Firma ein oder wählen Sie den passenden Eintrag\./.test(mp.blatt?.text ?? '') && mp.blatt.haupt.length === 1 && mp.blatt.haupt[0].text === 'Andere Website eingeben' && jaDa === 0 && mp.blatt.links.length === 1,
+            `[${name}] Z4.4 409 (AUFTRAG-123c N8: mobil die kurze Meldung, role=alert), Haupthandlung «Andere Website eingeben», kein «Ja»-Knopf, ein Textlink`,
+            /beispiel-ag\.ch gehört laut Handelsregister nicht zu Muster Holding AG\./.test(mp.blatt?.text ?? '') && !/Website-Inhalt|Bitte geben Sie die Website/.test(mp.blatt?.text ?? '') && mp.blatt.haupt.length === 1 && mp.blatt.haupt[0].text === 'Andere Website eingeben' && jaDa === 0 && mp.blatt.links.length === 1,
             JSON.stringify({ text: mp.blatt?.text, haupt: mp.blatt?.haupt, links: mp.blatt?.links, jaDa }),
         );
         // [09.11.2026] Warum: AUFTRAG-123b (N2) — Haupthandlung ohne Globus-Symbol, einzeilig, 56 px hoch (vorher 80 px, zweizeilig)
@@ -733,6 +848,29 @@ async function mobilLauf(o) {
         // halb unter dem Rand); jetzt scrollt nur Eintrag + Meldung (data-blatt-scroll), das Blatt selbst nie
         check(`[${name}] 409: Blatt ohne eigenes Scrollen (${mp.blatt?.scrollH}/${mp.blatt?.clientH}); reicht die Bühne nicht, scrollt nur Eintrag + Meldung (${JSON.stringify(mp.blatt?.innen)})`, !!mp.blatt && mp.blatt.scrollH <= mp.blatt.clientH + 1, lageText(mp));
         n2.innen = mp.blatt?.innen;
+        // [09.11.2026] Warum: AUFTRAG-123c (N8) — kurze Meldung wortgleich (Website und Firma fett), ganz sichtbar ohne Scrollen in der
+        // Hülle (scrollHeight ≤ clientHeight) bei 360×640, 375×553, 390×664 und 430×739 (A-123b O-b1: bei 375×553 angeschnitten)
+        const n8 = await page.evaluate((sel) => {
+            const b = document.querySelector(sel);
+            const m = b.querySelector('[data-hr-passt-nicht]');
+            const h = m.closest('[data-blatt-scroll]');
+            const mr = m.getBoundingClientRect();
+            const hr = h?.getBoundingClientRect();
+            const r1 = (x) => Math.round(x * 10) / 10;
+            return {
+                text: m.innerText.replace(/\s+/g, ' ').trim(),
+                fett: [...m.querySelectorAll('strong')].map((s) => s.innerText.trim()),
+                huelle: h ? { scrollH: h.scrollHeight, clientH: h.clientHeight, top: r1(hr.top), bottom: r1(hr.bottom) } : null,
+                meldung: { top: r1(mr.top), bottom: r1(mr.bottom), zeilen: Math.round(mr.height) },
+                fenster: window.innerHeight,
+            };
+        }, AKTION);
+        (protokoll.n8 = protokoll.n8 ?? {})[name] = n8;
+        check(
+            `[${name}] N8 409 kurz: «${n8.text}» (fett: ${n8.fett.join(' / ')}); ganz sichtbar — Hülle scrollHeight ${n8.huelle?.scrollH} ≤ clientHeight ${n8.huelle?.clientH}, Meldung ${n8.meldung.top}–${n8.meldung.bottom} in der Hülle ${n8.huelle?.top}–${n8.huelle?.bottom}`,
+            n8.text === 'beispiel-ag.ch gehört laut Handelsregister nicht zu Muster Holding AG.' && n8.fett.join('|') === 'beispiel-ag.ch|Muster Holding AG' && !!n8.huelle && n8.huelle.scrollH <= n8.huelle.clientH && n8.meldung.top >= n8.huelle.top - 0.5 && n8.meldung.bottom <= n8.huelle.bottom + 0.5 && n8.meldung.bottom <= n8.fenster,
+            JSON.stringify(n8),
+        );
         await bild('2b-passt-nicht', null);
         // die gemockte 409-Antwort meldet Chrome selbst als «Failed to load resource … 409 (Conflict)» (Netz, kein Skriptfehler)
         const ohne409 = () => konsole.filter((k) => !/status of 409 \(Conflict\)/.test(k));
@@ -807,12 +945,37 @@ async function mobilLauf(o) {
         !mk.telefon.aus && (ziel === null || mk.telefon.skala >= ziel) && /Lena/.test(mk.telefonAnsicht ?? '') && Math.abs(mk.telefon.skala - parseFloat(mk.skalaVar)) < 0.01,
         lageText(mk),
     );
+    // [09.11.2026] Warum: AUFTRAG-123c (N6) — Wechsel Füllmodus → Kurzblatt (Firma bestätigt → «Lena ist bereit»): Telefon wieder
+    // sichtbar, Blatt wieder kurz (keine Rückkopplung aus der Füllung des Firmen-Blatts)
+    const mFirma = lauf.schritte['Firma'] ?? lauf.schritte['Firma (Suche → Treffer)'];
+    if (mFirma?.telefonAusAttr === 'true')
+        check(
+            `[${name}] N6 Wechsel Füllmodus → Kurzblatt (Firma bestätigt → «${T.t4a('Lena')}»): Telefon wieder sichtbar (${mk.telefon?.sichtbareBreite}×${mk.telefon?.sichtbareHoehe} px), Blatt wieder kurz (${mk.blatt?.hoehe} von ${mk.buehne?.hoehe} px)`,
+            !mk.telefon.aus && mk.telefonAusAttr === null && mk.fuellen !== 'true' && mk.blatt.hoehe < mk.buehne.hoehe / 2 && mk.telefon.sichtbareBreite >= TELEFON_MIN_BREITE,
+            lageText(mk),
+        );
     await bild('4-kurzblatt', 'Kurzblatt');
 
     // Formular (ausgeklappt)
+    const animVor = await page.evaluate(() => window.__blattAnim.length);
     await page.tap('#ki-demo-bereit-knopf');
     await page.waitForTimeout(800);
     const mfo = await mess('Formular');
+    // [09.11.2026] Warum: AUFTRAG-123c (N6) — wächst das Blatt in den Füllmodus, dann per Web Animation mit Dauer und Kurve des
+    // Telefons (450 ms, cubic-bezier(0.32, 0.72, 0, 1)); bei reduzierter Bewegung sofort (keine Animation)
+    const animFormular = await page.evaluate((n) => window.__blattAnim.slice(n), animVor);
+    lauf.animFormular = animFormular;
+    if (mfo.telefonAusAttr === 'true') {
+        if (reduced) check(`[${name}] N6 reduzierte Bewegung: Formular füllt die Bühne sofort (keine Web Animation)`, animFormular.length === 0 && mfo.fuellen === 'true', JSON.stringify(animFormular));
+        else {
+            const a = animFormular[0];
+            check(
+                `[${name}] N6 Übergang Kurzblatt → Formular: das Blatt wächst per Web Animation ${a?.von} → ${a?.nach} (Bühne ${mfo.buehne?.hoehe}), ${a?.dauer} ms, ${a?.kurve} — wie das Telefon (${mfo.telefon?.transition} / ${mfo.telefon?.kurve})`,
+                animFormular.length === 1 && a.dauer === DAUER && a.kurve === KURVE && Math.abs(parseFloat(a.nach) - mfo.buehne.hoehe) <= 1 && mfo.telefon.transition.split(', ')[0] === `${DAUER / 1000}s` && mfo.telefon.kurve.startsWith(KURVE),
+                JSON.stringify({ animFormular, telefon: [mfo.telefon?.transition, mfo.telefon?.kurve] }),
+            );
+        }
+    }
     await pruefeFormular(page, name, mfo, hoehe);
     await bild('5-formular', 'Formular');
     // Schweizerdeutsch → T6 darunter, Formular passt weiter
@@ -898,6 +1061,17 @@ async function mobilLauf(o) {
             innenB: Math.round(innenB * 10) / 10,
             innenMitte: Math.round(innenMitte * 10) / 10,
             sollSchrift: `${Math.round(wurzel * 1.1875 * 1000) / 1000}px`,
+            wurzel,
+            // [09.11.2026] Warum: AUFTRAG-123c (N6) — Kasten der Zusammenfassung: Lage, Scrollen, Schattenrand, Zeilenbegrenzung
+            kasten: (() => {
+                const k = b.querySelector('[data-ki-demo-zf-kasten]');
+                if (!k || !zf) return null;
+                const r = k.getBoundingClientRect();
+                const kcs = getComputedStyle(k);
+                const pcs = getComputedStyle(zf);
+                return { top: Math.round(r.top * 10) / 10, bottom: Math.round(r.bottom * 10) / 10, scrollH: k.scrollHeight, clientH: k.clientHeight, ueberlauf: k.getAttribute('data-ueberlauf'), schatten: getComputedStyle(k, '::after').opacity, textH: Math.round(zf.getBoundingClientRect().height * 10) / 10, pad: parseFloat(kcs.paddingTop) + parseFloat(kcs.paddingBottom), clamp: pcs.webkitLineClamp, display: pcs.display };
+            })(),
+            mehrSichtbar: !!b.querySelector('#ki-demo-mehr')?.getClientRects().length,
             titel: titel.innerText.trim(),
             dauer: dauer ? { text: dauer.innerText.trim(), gleicheZeile: dr.top < tr.bottom && dr.bottom > tr.top, rechts: dr.left > tr.right - 1, schrift: getComputedStyle(dauer).fontSize, tabular: getComputedStyle(dauer).fontVariantNumeric } : null,
             dauerZeile: [...b.querySelectorAll('p')].some((p) => p.innerText.trim().startsWith('Dauer:')),
@@ -936,16 +1110,63 @@ async function mobilLauf(o) {
         check(`[${name}] Z5.6: «Nochmals versuchen» → direkt das ausgeklappte Formular derselben Firma (kein Kurzblatt)`, !direkt.kurz && direkt.nummer && direkt.knopf === 'bereit' && mn.blatt?.titel === T.t5('Lena'), JSON.stringify({ ...direkt, titel: mn.blatt?.titel }));
         await bild('9-nochmals-formular', null);
     } else {
-        check(
-            `[${name}] Z7 Ende: Titelzeile «Ihre Zusammenfassung» mit «2:51 Min.» rechts (14 px, tabular-nums), keine eigene Dauer-Zeile, höchstens 6 Zeilen + «Mehr anzeigen»`,
-            ende.titel === 'Ihre Zusammenfassung' && ende.dauer?.text === '2:51 Min.' && ende.dauer.gleicheZeile && ende.dauer.rechts && ende.dauer.tabular.includes('tabular-nums') && !ende.dauerZeile && ende.zfZeilen <= 6 && ende.mehr,
-            JSON.stringify(ende),
-        );
+        // [09.11.2026] Warum: AUFTRAG-123c (N6) — ist das Telefon aus (alle Handys), füllt das Ende-Blatt die Bühne: Kasten ohne
+        // Zeilenbegrenzung und ohne «Mehr anzeigen». Ist es sichtbar (Tablet), bleibt alles wie bisher (6 Zeilen + «Mehr anzeigen»).
+        const fuellEnde = me.telefonAusAttr === 'true';
+        const titelOk = ende.titel === 'Ihre Zusammenfassung' && ende.dauer?.text === '2:51 Min.' && ende.dauer.gleicheZeile && ende.dauer.rechts && ende.dauer.tabular.includes('tabular-nums') && !ende.dauerZeile;
+        if (!fuellEnde)
+            check(
+                `[${name}] Z7 Ende: Titelzeile «Ihre Zusammenfassung» mit «2:51 Min.» rechts (14 px, tabular-nums), keine eigene Dauer-Zeile, höchstens 6 Zeilen + «Mehr anzeigen» (Telefon sichtbar, kein Füllmodus)`,
+                titelOk && ende.zfZeilen <= 6 && (kurzerText || ende.mehrSichtbar),
+                JSON.stringify(ende),
+            );
+        else {
+            const k = ende.kasten;
+            const ueber = !!k && k.scrollH > k.clientH + 1;
+            const abstand = k ? Math.round((h0.top - k.bottom) * 10) / 10 : null;
+            lauf.n6Ende = { kasten: k, abstand, ueber, wurzel: ende.wurzel };
+            check(
+                `[${name}] N6 Ende im Füllmodus: Titelzeile wie Z7, kein «Mehr anzeigen», ohne Zeilenbegrenzung (${k?.display}, line-clamp ${k?.clamp}); Kasten-Unterkante ${k?.bottom} ≤ Oberkante Haupthandlung ${h0?.top}`,
+                titelOk && !!k && !ende.mehrSichtbar && k.clamp === 'none' && k.display === 'block' && k.bottom <= h0.top + 0.5,
+                JSON.stringify({ kasten: k, mehr: ende.mehrSichtbar, h0top: h0?.top }),
+            );
+            // passt der Text: Kasten = Texthöhe, der freie Platz liegt darunter; sonst wächst der Kasten bis 1rem über die Haupthandlung
+            if (!ueber)
+                check(
+                    `[${name}] N6 Ende, Text passt${kurzerText ? ' (kurzer Gesprächstext)' : ''}: Kasten so hoch wie der Text (${k?.clientH} = ${k?.textH} + ${k?.pad} Innenabstand), kein Scrollen; freier Platz zwischen Kasten und Haupthandlung (${abstand} px ≥ 1rem)`,
+                    !!k && Math.abs(k.clientH - k.textH - k.pad) <= 1 && abstand >= ende.wurzel - 0.5,
+                    JSON.stringify(k),
+                );
+            else
+                check(
+                    `[${name}] N6 Ende, langer Text: Kasten wächst bis zur Haupthandlung (Abstand ${abstand} px = 1rem = ${ende.wurzel} px), scrollt allein (${k?.scrollH} > ${k?.clientH}), das Blatt nicht`,
+                    !!k && Math.abs(abstand - ende.wurzel) <= 1 && me.blatt.scrollH <= me.blatt.clientH + 1,
+                    JSON.stringify(k),
+                );
+            if (kurzerText) check(`[${name}] N6 Ende, kurzer Gesprächstext: kein Überlauf, der Kasten endet deutlich über der Haupthandlung (${abstand} px)`, !!k && !ueber && abstand > ende.wurzel + 1, JSON.stringify(k));
+            check(`[${name}] N6 Ende: Schattenrand genau dann, wenn der Text überläuft (Überlauf ${ueber}, data-ueberlauf ${k?.ueberlauf}, Deckkraft ${k?.schatten})`, !!k && (k.ueberlauf === 'true') === ueber && (k.schatten === '1') === ueber, JSON.stringify(k));
+            if (ueber) {
+                // ans Ende gescrollt: kein Schattenrand mehr; zurück nach oben: wieder da
+                const ende2 = await page.evaluate(async () => {
+                    const k2 = document.querySelector('[data-ki-demo-zf-kasten]');
+                    k2.scrollTop = k2.scrollHeight;
+                    await new Promise((ok) => setTimeout(ok, 400));
+                    const unten = { ueberlauf: k2.getAttribute('data-ueberlauf'), schatten: getComputedStyle(k2, '::after').opacity, scrollY: Math.round(scrollY) };
+                    k2.scrollTop = 0;
+                    await new Promise((ok) => setTimeout(ok, 400));
+                    return { unten, oben: { ueberlauf: k2.getAttribute('data-ueberlauf'), schatten: getComputedStyle(k2, '::after').opacity, scrollY: Math.round(scrollY) } };
+                });
+                check(`[${name}] N6 Ende: im Kasten ans Ende gescrollt → kein Schattenrand; zurück → wieder da; die Seite scrollt nicht`, ende2.unten.ueberlauf === 'false' && ende2.unten.schatten === '0' && ende2.oben.ueberlauf === 'true' && ende2.oben.schatten === '1' && ende2.unten.scrollY === 0 && ende2.oben.scrollY === 0, JSON.stringify(ende2));
+            }
+        }
         check(
             `[${name}] N4 Ende: Haupthandlung «Angebot anfragen» (natives <a> #anfrage, #1f7a35, ${h0?.breite}×${h0?.hoehe} px = volle Breite, ${h0?.zeilen} Zeile, Radius ${h0?.radius}, Schrift ${h0?.schrift}), darunter Textlink «Nochmals testen» (${l0?.hoehe} px, zentriert)`,
             n4Gestalt && h0.tag === 'A' && h0.anfrage && h0.href === '#anfrage' && h0.text === 'Angebot anfragen' && h0.bg === 'rgb(31, 122, 53)' && l0.id === 'ki-demo-nochmals-testen' && l0.tag === 'BUTTON' && l0.text === 'Nochmals testen',
             JSON.stringify({ haupt: h0, link: l0, innenB: ende.innenB, innenMitte: ende.innenMitte, sollSchrift: ende.sollSchrift, zweit: ende.zweit }),
         );
+    }
+    // AUFTRAG-123b (N4) «Mehr anzeigen» — nur ohne Füllmodus (AUFTRAG-123c N6: im Füllmodus gibt es kein «Mehr anzeigen»)
+    if (!fehler && me.telefonAusAttr !== 'true' && !kurzerText) {
         await page.tap('#ki-demo-mehr');
         await page.waitForTimeout(400);
         const mm = await mess('Mehr anzeigen');
@@ -1091,6 +1312,65 @@ async function desktopSucheCls() {
     const alle = await page.evaluate(() => window.__cls);
     protokoll.desktopSucheCls = { nachAntwort, alle };
     console.log(`INFO  Desktop (Bestand) kein Treffer → Suche: CLS-Einträge ${JSON.stringify(alle)}`);
+    await ctx.close();
+}
+
+/**
+ * [09.11.2026] Warum: AUFTRAG-123c (N6, keine Rückkopplung) — Wechsel im SELBEN Blatt (kein Neuaufbau, nur der Inhalt wechselt):
+ * 5 Treffer im Füllmodus (bei 375×812 ist die Liste zu hoch für ein lesbares Telefon) → «Meine Firma ist nicht dabei» (kurzes
+ * Suchformular: Telefon wieder sichtbar, Blatt schrumpft animiert) → «Zurück zu den Vorschlägen» (wieder Füllmodus, wächst).
+ */
+async function wechselLauf() {
+    const name = '375x812-5t-hell-wechsel';
+    const { ctx, page, konsole } = await neueSeite({ breite: 375, hoehe: 812 });
+    const z = await apiAbfangen(page, { treffer: 5 });
+    await page.goto(SEITE, { waitUntil: 'networkidle' });
+    await page.evaluate(() => {
+        window.scrollTo(0, 0);
+        window.__maxScroll = 0;
+    });
+    await scanne(page);
+    await page.waitForSelector('[data-handelsregister="treffer"]', { timeout: 15000 });
+    await page.waitForTimeout(900);
+    const lauf = { name, schritte: {} };
+    let bis = 0;
+    const mess = async (schritt) => {
+        const m = await messe(page);
+        m.ausWechselListe = m.ausWechsel.slice(bis);
+        m.ausWechselSchritt = m.ausWechselListe.length;
+        bis = m.ausWechsel.length;
+        lauf.schritte[schritt] = m;
+        zeile(name, '375×812', schritt, m);
+        pruefeSchritt(name, schritt, m);
+        return m;
+    };
+    const anim = () => page.evaluate(() => window.__blattAnim.slice());
+    const m1 = await mess('Firma (5 Treffer)');
+    await page.screenshot({ path: path.join(SCREENS, `mobil-${name}-1-liste.png`) });
+    const a0 = (await anim()).length;
+    await page.tap('#ki-demo-hr-andere');
+    await page.waitForTimeout(900);
+    const m2 = await mess('Suche (Meine Firma ist nicht dabei)');
+    const a1 = (await anim()).slice(a0);
+    await page.screenshot({ path: path.join(SCREENS, `mobil-${name}-2-suche.png`) });
+    check(
+        `[${name}] N6 Wechsel im selben Blatt: Liste im Füllmodus (Telefon aus) → Suchformular: Telefon wieder sichtbar (${m2.telefon?.sichtbareBreite} px), Blatt wieder kurz (${m2.blatt?.hoehe} px), schrumpft per Web Animation (${a1[0]?.von} → ${a1[0]?.nach}, ${a1[0]?.dauer} ms, ${a1[0]?.kurve})`,
+        m1.telefonAusAttr === 'true' && m1.fuellen === 'true' && m2.telefonAusAttr === null && m2.fuellen !== 'true' && !m2.telefon.aus && a1.length === 1 && a1[0].dauer === DAUER && a1[0].kurve === KURVE && Math.abs(parseFloat(a1[0].von) - m1.buehne.hoehe) <= 1 && Math.abs(parseFloat(a1[0].nach) - m2.blatt.hoehe) <= 1,
+        JSON.stringify({ a1, m1: lageText(m1), m2: lageText(m2) }),
+    );
+    const a2n = (await anim()).length;
+    await page.tap('#ki-demo-hr-zurueck');
+    await page.waitForTimeout(900);
+    const m3 = await mess('Firma (zurück zu den Vorschlägen)');
+    const a2 = (await anim()).slice(a2n);
+    await page.screenshot({ path: path.join(SCREENS, `mobil-${name}-3-zurueck.png`) });
+    check(
+        `[${name}] N6 zurück zur Liste: wieder Füllmodus (Telefon aus), Blatt wächst per Web Animation (${a2[0]?.von} → ${a2[0]?.nach}, ${a2[0]?.dauer} ms)`,
+        m3.telefonAusAttr === 'true' && m3.fuellen === 'true' && a2.length === 1 && a2[0].dauer === DAUER && a2[0].kurve === KURVE && Math.abs(parseFloat(a2[0].nach) - m3.buehne.hoehe) <= 1,
+        JSON.stringify(a2),
+    );
+    await abschluss(page, name, 375, konsole, z, { anrufe: 0 });
+    protokoll.mobil.push(lauf);
     await ctx.close();
 }
 
@@ -1340,10 +1620,13 @@ try {
             const soll = (b, h) => !NUR || NUR === `${b}x${h}`;
             let film1 = null;
             let film5 = null;
+            // [09.11.2026] Warum: AUFTRAG-123c — zweiter Filmstreifen 393×727 (Pixel 7, Formular jetzt im Füllmodus)
+            let film393 = null;
             for (const [b, h] of VIEWPORTS)
                 if (soll(b, h)) {
-                    const frames = await mobilLauf({ breite: b, hoehe: h, treffer: 1, shots: true, film: b === 390 && h === 664 });
+                    const frames = await mobilLauf({ breite: b, hoehe: h, treffer: 1, shots: true, film: (b === 390 && h === 664) || (b === 393 && h === 727) });
                     if (b === 390 && h === 664) film1 = frames;
+                    if (b === 393 && h === 727) film393 = frames;
                 }
             if (soll(390, 664)) {
                 await mobilLauf({ breite: 390, hoehe: 664, treffer: 1, theme: 'dark', shots: true });
@@ -1372,6 +1655,9 @@ try {
                 }
             if (soll(360, 640)) await mobilLauf({ breite: 360, hoehe: 640, treffer: 1, fall: 'suche', shots: true });
             if (soll(430, 739)) await mobilLauf({ breite: 430, hoehe: 739, treffer: 1, fall: 'passt_nicht', shots: true });
+            // [09.11.2026] Warum: AUFTRAG-123c (N6) — kurzer Gesprächstext (Kasten = Texthöhe) und Wechsel im selben Blatt (keine Rückkopplung)
+            if (soll(390, 664)) await mobilLauf({ breite: 390, hoehe: 664, treffer: 1, kurzerText: true, shots: true });
+            if (soll(375, 812)) await wechselLauf();
             if (soll(768, 1024)) {
                 await mobilLauf({ breite: 768, hoehe: 1024, treffer: 1, shots: true, name: 'tablet-768x1024-1t-hell' });
                 const t = protokoll.mobil.find((l) => l.name === 'tablet-768x1024-1t-hell');
@@ -1388,6 +1674,7 @@ try {
                 await kontrastLauf('dark');
             }
             if (film1) await filmstreifen(film1, 'filmstreifen-390x664-hell.png');
+            if (film393) await filmstreifen(film393, 'filmstreifen-393x727-hell.png');
             if (film5) await filmstreifen(film5, 'filmstreifen-390x664-5treffer-hell.png');
         }
 
@@ -1457,18 +1744,42 @@ protokoll.tabelle = tabelle;
 writeFileSync(path.join(SCREENS, 'browser-test.json'), JSON.stringify(protokoll, null, 2));
 if (tabelle.length) {
     const md = [
-        '# A-123b Messtabelle (Playwright, Produktionsbuild :3011, /api/demo/** gemockt; Schwelle Telefon-Skala 0,36)',
+        '# A-123c Messtabelle (Playwright, Produktionsbuild :3011, /api/demo/** gemockt; Telefon aus unter 110 px sichtbarer Breite)',
         '',
-        'Werte in px aus getBoundingClientRect(); Telefon-Grundgrösse = Layout-Masse ohne Transform (offsetWidth × offsetHeight), Skala = gemessene Höhe ÷ Grundhöhe.',
+        'Werte in px aus getBoundingClientRect(); Telefon-Grundgrösse = Layout-Masse ohne Transform (offsetWidth × offsetHeight), Skala = gemessene Höhe ÷ Grundhöhe, sichtbar = Rechteck mit Transform. «füllt» = Blatt im Füllmodus (N6).',
         '',
-        '| Lauf | Viewport | Schritt | Bühne oben–unten (Höhe) | Telefon Grundgrösse | Skala | Telefon sichtbar | Telefon oben–unten | Blatt Oberkante | Blatt Höhe | Haupthandlung unten | Fenster | scrollY |',
-        '|---|---|---|---|---|---|---|---|---|---|---|---|---|',
+        '| Lauf | Viewport | Schritt | Bühne oben–unten (Höhe) | Telefon Grundgrösse | Skala | sichtbare Grösse | Telefon sichtbar | Telefon oben–unten | Blatt Oberkante | Blatt Höhe | Füllmodus | Haupthandlung unten | Fenster | scrollY |',
+        '|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|',
     ];
     for (const t of tabelle)
         md.push(
-            `| ${t.lauf} | ${t.viewport} | ${t.schritt} | ${t.buehne ? `${t.buehne.top}–${t.buehne.bottom} (${t.buehne.hoehe})` : '–'} | ${t.telefon ? `${t.telefon.basisBreite}×${t.telefon.basisHoehe}` : '–'} | ${t.telefon?.skala ?? '–'} | ${t.telefon ? (t.telefon.aus ? 'nein (ausgeblendet)' : 'ja') : '–'} | ${t.telefon ? `${t.telefon.top}–${t.telefon.bottom}` : '–'} | ${t.blatt ? `${t.blatt.top} (${t.blatt.art})` : 'kein Blatt'} | ${t.blatt?.hoehe ?? '–'} | ${t.hauptUnten ?? '–'} | ${t.innerHeight} | ${t.scrollY} |`,
+            `| ${t.lauf} | ${t.viewport} | ${t.schritt} | ${t.buehne ? `${t.buehne.top}–${t.buehne.bottom} (${t.buehne.hoehe})` : '–'} | ${t.telefon ? `${t.telefon.basisBreite}×${t.telefon.basisHoehe}` : '–'} | ${t.telefon?.skala ?? '–'} | ${t.telefon ? `${t.telefon.sichtbareBreite}×${t.telefon.sichtbareHoehe}` : '–'} | ${t.telefon ? (t.telefon.aus ? 'nein (ausgeblendet)' : 'ja') : '–'} | ${t.telefon ? `${t.telefon.top}–${t.telefon.bottom}` : '–'} | ${t.blatt ? `${t.blatt.top} (${t.blatt.art})` : 'kein Blatt'} | ${t.blatt?.hoehe ?? '–'} | ${t.blatt ? (t.fuellen ? 'füllt' : 'nein') : '–'} | ${t.hauptUnten ?? '–'} | ${t.innerHeight} | ${t.scrollY} |`,
         );
     writeFileSync(path.join(SCREENS, 'messtabelle.md'), md.join('\n') + '\n');
+    // [09.11.2026] Warum: AUFTRAG-123c (N7) — Messtabelle wie A-123b N1: Skala und sichtbare Breite × Höhe je Blatt und Viewport
+    // (1 Treffer, hell); «aus» = sichtbare Breite (Grundbreite × Skala) unter 110 px → ausgeblendet, das Blatt füllt die Bühne
+    const n7Laeufe = [...new Set(tabelle.map((t) => t.lauf))].filter((l) => /^(\d+x\d+-1t-hell|tablet-768x1024-1t-hell)$/.test(l));
+    const n7Schritte = ['Firma', 'Kurzblatt', 'Formular', 'Ende'];
+    const n7 = [
+        '# A-123c N7 — Telefon je Blatt: Skala · sichtbare Breite × Höhe (px) · sichtbar/aus (Schwelle 110 px Breite)',
+        '',
+        `| Viewport (Grundbreite) | ${n7Schritte.join(' | ')} |`,
+        `|---|${n7Schritte.map(() => '---').join('|')}|`,
+    ];
+    for (const l of n7Laeufe) {
+        const zeilen = tabelle.filter((t) => t.lauf === l);
+        const grund = zeilen.find((t) => t.telefon)?.telefon;
+        const zelle = (s) => {
+            const t = zeilen.find((x) => x.schritt === s);
+            if (!t?.telefon) return '–';
+            const sk = parseFloat(t.skalaVar);
+            const b = Math.round(t.telefon.basisBreite * sk * 10) / 10;
+            const h = Math.round(t.telefon.basisHoehe * sk * 10) / 10;
+            return `${t.skalaVar} · ${b}×${h} · ${t.telefon.aus ? '**aus**' : 'sichtbar'}`;
+        };
+        n7.push(`| ${l.replace('-1t-hell', '').replace('tablet-', '')} (${grund?.basisBreite}×${grund?.basisHoehe}) | ${n7Schritte.map(zelle).join(' | ')} |`);
+    }
+    writeFileSync(path.join(SCREENS, 'n7-tabelle.md'), n7.join('\n') + '\n');
 }
 const fehl = ergebnisse.filter((e) => !e.ok).length;
 console.log(`\n${PHASE}: ${ergebnisse.length - fehl}/${ergebnisse.length} bestanden`);

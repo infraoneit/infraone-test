@@ -115,6 +115,8 @@
          * einem Sheet), bis es ganz darüber passt: --telefon-skala setzt KiDemo.tsx (ResizeObserver; ohne Blatt 1). Nie
          * angeschnitten; unter 0,36 blendet es aus (data-telefon-aus; [09.11.2026] Warum: AUFTRAG-123b N1 — vorher 0,32,
          * Briefmarke bei 0,33–0,34). Transform verschiebt kein Layout.
+         * [09.11.2026] Warum: AUFTRAG-123c (N7) — ausgeblendet wird jetzt nach Pixeln: sichtbare Breite (Grundbreite × Skala) unter
+         * 110 px (TELEFON_MIN_BREITE in KiDemo.tsx), nicht mehr nach der Skala 0,36. Dann füllt das Blatt die Bühne (N6, unten).
          */
         transform: scale(var(--telefon-skala, 1));
         transform-origin: top center;
@@ -251,6 +253,48 @@
         background: linear-gradient(to bottom, transparent, rgba(0, 0, 0, 0.7));
     }
     .blattRest[data-ueberlauf='true']::after {
+        opacity: 1;
+    }
+    /*
+     * [09.11.2026] Warum: AUFTRAG-123c (N6) «Zeigen oder fragen» — ist das Telefon ausgeblendet (zu klein zum Lesen), füllt das
+     * Blatt die ganze Bühne statt einen leeren Streifen darüber zu lassen: data-fuellen (setzt KiDemo.tsx nur dann) → Höhe =
+     * Bühnenhöhe, Oberkante = Bühnen-Oberkante (8 px unter der Kompaktzeile, wie das Telefon), Unterkante wie bisher. Der Anker
+     * (Höhe 0, translateY(-100%)) bleibt: die Layout-Lage des Blatts ändert sich nie (CLS 0). Inhalt oben; Haupthandlung und
+     * Textlink unten — die Lücke [data-blatt-luecke] bzw. mt-auto nimmt den Platz, bei mehreren Treffern die Liste, im Formular
+     * die Felder. Alles, was die Füllung ändert, hängt an diesem Attribut: KiDemo.tsx nimmt es zum Messen der natürlichen Höhe
+     * kurz weg (keine Rückkopplung). Wachsen/Schrumpfen: Web Animation (min-height, 450 ms, Kurve des Telefons) in KiDemo.tsx.
+     */
+    .buehne[data-kompakt='true'] .aktionKarte[data-fuellen='true'] {
+        min-height: var(--buehne-h);
+    }
+    /* Ende im Füllmodus: Zusammenfassung ohne Zeilenbegrenzung, «Mehr anzeigen» entfällt; der Kasten (flex 0 1 auto) wächst bis
+       zur Haupthandlung — ist der Text kürzer, ist er so hoch wie der Text — und scrollt bei längerem Text allein */
+    .buehne[data-kompakt='true'] .aktionKarte[data-fuellen='true'] [data-ki-demo-zusammenfassung] {
+        display: block;
+        -webkit-line-clamp: none;
+        overflow: visible;
+    }
+    .buehne[data-kompakt='true'] .aktionKarte[data-fuellen='true'] [data-blatt-mehr] {
+        display: none;
+    }
+    /* Schattenrand unten am Kasten (wie .blattRest), solange Text unter dem Rand liegt (data-ueberlauf aus KiDemo.tsx, nur im
+       Füllmodus). Der Kasten hat 1rem Innenabstand: der Rand reicht bis an die Kanten; ohne Überlauf kein Platzbedarf (0 px). */
+    .zfKasten::after {
+        content: '';
+        position: sticky;
+        bottom: -1rem;
+        display: block;
+        height: 1.25rem;
+        margin: -1.25rem -1rem 0;
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 0.2s ease;
+        background: linear-gradient(to bottom, transparent, rgba(10, 18, 10, 0.22));
+    }
+    :global(.dark) .zfKasten::after {
+        background: linear-gradient(to bottom, transparent, rgba(0, 0, 0, 0.7));
+    }
+    .zfKasten[data-ueberlauf='true']::after {
         opacity: 1;
     }
     /* K2/K4: mobil zeigt die Statuszeile nur noch den Stand (kein Sprung zum Telefon mehr) */

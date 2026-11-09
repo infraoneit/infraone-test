@@ -381,15 +381,26 @@ export function Handelsregister({ scanId, website, start, onNochmals, onBestaeti
                 {fehler}
             </p>
         );
-        const passtMeldung = passt && (
-            <p role="alert" data-hr-passt-nicht="" className="mt-4 flex-shrink-0 rounded-2xl border border-red-200 dark:border-red-900/60 bg-red-50 dark:bg-red-950/40 px-4 py-3 text-sm text-red-800 dark:text-red-200">
-                {passt[0]}
-                <strong className="font-semibold">{passt[1]}</strong>
-                {passt[2]}
-                <strong className="font-semibold">{passt[3]}</strong>
-                {passt[4]}
+        // [09.11.2026] Warum: AUFTRAG-123c (N8) — mobil die kurze Meldung (HR_KOMPAKT.passtNicht); was zu tun ist, sagen Haupthandlung
+        // und Textlink. Vorher war die Meldung bei 375×553 nach 3½ Zeilen angeschnitten (A-123b O-b1). Darstellung wie bisher.
+        // Bei einem Treffer 8 statt 16 px unter dem Eintrag (die Meldung gehört zu ihm): gemessen bei 375×553 bricht auch die kurze
+        // Meldung dreizeilig um, mit 16 px fehlten der Hülle 5 px (scrollHeight 189 > clientHeight 184), mit 8 px passt sie (181 = 181).
+        const passtK = passtNicht ? HR_KOMPAKT.passtNicht(passtNicht.website, passtNicht.firma) : null;
+        const passtMeldung = passtK && (
+            <p role="alert" data-hr-passt-nicht="" className={`${einer ? 'mt-2' : 'mt-4'} flex-shrink-0 rounded-2xl border border-red-200 dark:border-red-900/60 bg-red-50 dark:bg-red-950/40 px-4 py-3 text-sm text-red-800 dark:text-red-200`}>
+                {passtK[0]}
+                <strong className="font-semibold">{passtK[1]}</strong>
+                {passtK[2]}
+                <strong className="font-semibold">{passtK[3]}</strong>
+                {passtK[4]}
             </p>
         );
+        /*
+         * [09.11.2026] Warum: AUFTRAG-123c (N6) — Lücke für den Füllmodus: Ist das Telefon aus, füllt das Blatt die ganze Bühne
+         * (data-fuellen, KiDemo.tsx); diese Lücke nimmt den gewonnenen Platz, damit Inhalt oben und Haupthandlung + Textlink unten
+         * stehen (ohne Füllung 0 px hoch, ändert nichts). Wo die Trefferliste oder die Felder wachsen, braucht es sie nicht.
+         */
+        const luecke = <div aria-hidden="true" data-blatt-luecke="" className="grow" />;
         // [09.11.2026] Warum: AUFTRAG-123b (N2) — ohne Globus-Symbol: mit Symbol brach «Andere Website eingeben» bei 375–390 px
         // zweizeilig um (Knopf 80 px, A-123 O5); ohne passt es einzeilig (56 px) ab 360 px. Desktop-Zweig unverändert.
         const andereWebsiteKnopf = (
@@ -427,6 +438,7 @@ export function Handelsregister({ scanId, website, start, onNochmals, onBestaeti
                         <p role="alert" className="mt-4 rounded-2xl border border-amber-200 dark:border-amber-900/60 bg-amber-50 dark:bg-amber-950/30 px-4 py-3 text-sm text-amber-900 dark:text-amber-100">
                             {ergebnis === 'netz' ? NETZ : HR_TEXT.nichtErreichbar}
                         </p>
+                        {luecke}
                         <button type="button" onClick={onNochmals} className={`${KNOPF} mt-4`} id="ki-demo-hr-nochmals" data-blatt-haupt="">
                             <RotateCcw className="w-5 h-5" aria-hidden="true" />
                             Nochmals prüfen
@@ -454,6 +466,7 @@ export function Handelsregister({ scanId, website, start, onNochmals, onBestaeti
                             {passtMeldung}
                             {fehlerZeile}
                         </div>
+                        {luecke}
                         <div className="mt-4 flex-shrink-0">
                             {passt ? (
                                 andereWebsiteKnopf
@@ -501,7 +514,8 @@ export function Handelsregister({ scanId, website, start, onNochmals, onBestaeti
                 )}
 
                 {suchFormular && (
-                    <form onSubmit={suchen} noValidate className="mt-4 flex-shrink-0" aria-label="Firma im Handelsregister suchen">
+                    // AUFTRAG-123c (N6): als Spalte, die im Füllmodus wächst — «Suchen» rückt mit der Lücke nach unten (ohne Füllung gleich wie bisher)
+                    <form onSubmit={suchen} noValidate className="mt-4 flex flex-shrink-0 grow flex-col" aria-label="Firma im Handelsregister suchen">
                         <div className="mb-2 flex items-baseline justify-between gap-3">
                             <label htmlFor="ki-demo-hr-suche" className="text-sm font-medium text-text-primary">
                                 Firmenname oder UID
@@ -527,6 +541,7 @@ export function Handelsregister({ scanId, website, start, onNochmals, onBestaeti
                             />
                         </div>
                         {fehlerZeile}
+                        {luecke}
                         <button type="submit" disabled={!!laeuft} className={`${KNOPF} mt-4`} id="ki-demo-hr-suchen" data-blatt-haupt="">
                             {laeuft === 'suche' ? <Loader2 className="w-5 h-5 animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <Search className="w-5 h-5" aria-hidden="true" />}
                             Suchen
@@ -547,6 +562,7 @@ export function Handelsregister({ scanId, website, start, onNochmals, onBestaeti
                         <p role="alert" className="mt-4 rounded-2xl border border-red-200 dark:border-red-900/60 bg-red-50 dark:bg-red-950/40 px-4 py-3 text-sm text-red-800 dark:text-red-200">
                             {HR_TEXT.aktivNoetig} Gerne zeigen wir Ihnen den Assistenten persönlich.
                         </p>
+                        {luecke}
                         <Link href={`/kontakt?subject=${encodeURIComponent('KI-Telefonassistent')}`} className={`${KNOPF} mt-4`} id="ki-demo-hr-kontakt" data-blatt-haupt="">
                             Kontakt aufnehmen
                             <ArrowRight className="w-5 h-5 flex-shrink-0" aria-hidden="true" />
