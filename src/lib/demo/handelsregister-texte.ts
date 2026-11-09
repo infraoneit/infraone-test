@@ -114,6 +114,32 @@ export const HR_SCHRITT = {
     nochmalsVersuchen: 'Nochmals versuchen',
 } as const;
 
+/**
+ * [09.11.2026] Warum: AUFTRAG-123 (Abschnitt 3, wortgleich vom Manager) — Texte nur für das Firmen-Blatt im Kompaktmodus
+ * (Handy, unter 1024 px): T1 Titel bei genau einem aktiven Treffer, T2 Herkunftszeile unter dem Titel (ersetzt dort
+ * Untertitel, Lesehinweis und die Datenschutz-Fusszeile), T3 zugänglicher Name je antippbarer Zeile bei mehreren Treffern.
+ * Am Desktop unverändert (HR_SCHRITT/HR_TEXT).
+ */
+export const HR_KOMPAKT = {
+    /** T1 */
+    titelEiner: 'Ist das Ihre Firma?',
+    /** T2 */
+    herkunft: 'Aus dem Handelsregister (Zefix)',
+    /** T3: aria-label je Trefferzeile («{Name}, {Sitz}: Das ist meine Firma») */
+    zeileLabel: (name: string, sitz: string) => `${name}, ${sitz}: Das ist meine Firma`,
+    /**
+     * [09.11.2026] Warum: AUFTRAG-123b (N3, wortgleich vom Manager) — Platzhalter des Suchfelds im Kompaktmodus; der lange
+     * Desktop-Platzhalter «z. B. Muster AG oder CHE-123.456.789» war mobil am Ende abgeschnitten (A-123 O6).
+     */
+    platzhalter: 'z. B. Muster AG',
+    /**
+     * [09.11.2026] Warum: AUFTRAG-123c (N8, wortgleich vom Manager) — 409 «Website passt nicht» im Kompaktmodus kurz: Was zu tun
+     * ist, sagen die Haupthandlung («Andere Website eingeben») und der Textlink. Teile wie websitePasstNichtTeile (Website und
+     * Firma fett). Ziel: Meldung bei 360×640 bis 430×739 ganz sichtbar, ohne Scrollen im Kasten. Desktop-Text unverändert.
+     */
+    passtNicht: (website: string, firma: string): [string, string, string, string, string] => ['', website, ' gehört laut Handelsregister nicht zu ', firma, '.'],
+} as const;
+
 export const HR_TEXT = {
     /** Datenschutz-Hinweis im Widget (AUFTRAG-109, Abschnitt 3, wortgleich) */
     datenschutz: 'Wir prüfen den Firmennamen gegen das öffentliche Handelsregister (Zefix).',

@@ -22,7 +22,12 @@ const CONTENT_SECURITY_POLICY = [
   "base-uri 'self'",
   "form-action 'self'",
   "frame-ancestors 'self'",
-  "upgrade-insecure-requests",
+  // [09.11.2026] AUFTRAG-120: Testlink im Buero-LAN laeuft ueber http://<IP>:3010. Mit
+  // «upgrade-insecure-requests» hebt der Browser dort jede Stylesheet- und Skript-Anfrage auf
+  // HTTPS an, der Server antwortet nicht, die Seite erscheint ohne Gestaltung (localhost ist
+  // davon ausgenommen, darum fiel es am PC nie auf). Nur fuer den Build des Testlinks
+  // (INFRAONE_TESTLINK_HTTP=1) entfaellt die Anweisung; Netlify/Live bleibt unveraendert.
+  ...(process.env.INFRAONE_TESTLINK_HTTP === "1" ? [] : ["upgrade-insecure-requests"]),
 ].join("; ");
 
 const SICHERHEITS_HEADER = [
